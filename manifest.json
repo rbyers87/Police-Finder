@@ -1,0 +1,32 @@
+{
+  "name": "Texas Law Enforcement Jurisdiction Locator",
+  "short_name": "TXLE Locator",
+  "description": "Find your local law enforcement agency based on your GPS location in Texas",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f5f7fa",
+  "theme_color": "#004080",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "assets/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/adaptive-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/favicon.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["utilities", "publicafety"],
+  "lang": "en",
+  "dir": "ltr"
+}

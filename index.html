@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="theme-color" content="#004080">
+    <meta name="description" content="Find your local Texas law enforcement agency based on your GPS location">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="TXLE Locator">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="assets/icon.png">
+    <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+    <title>Texas Law Enforcement Locator</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div id="app">
+        <header class="app-header">
+            <div class="header-content">
+                <i class="fas fa-shield-alt"></i>
+                <h1>Texas Law Enforcement Lookup</h1>
+                <p class="subtitle">Find your local law enforcement agency</p>
+            </div>
+        </header>
+
+        <main class="container">
+            <!-- Emergency Disclaimer -->
+            <div class="emergency-banner">
+                <i class="fas fa-exclamation-triangle"></i>
+                <div class="emergency-text">
+                    <strong>FOR EMERGENCIES, DIAL 9-1-1</strong>
+                    <p>This service is for non-emergency contact information only</p>
+                </div>
+            </div>
+
+            <!-- Location Section -->
+            <section class="location-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-location-dot"></i> Your Location</h2>
+                    <button id="getCurrentLocation" class="btn btn-primary">
+                        <i class="fas fa-crosshairs"></i> Use My Location
+                    </button>
+                </div>
+
+                <!-- Search Box -->
+                <div class="search-container">
+                    <div class="search-box">
+                        <input type="text" id="addressSearch" placeholder="Or enter an address in Texas..."
+                            class="search-input">
+                        <button id="searchAddress" class="btn btn-secondary">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Location Display -->
+                <div id="locationDisplay" class="location-display hidden">
+                    <div class="location-info">
+                        <h3 id="locationName"></h3>
+                        <p id="locationDetails"></p>
+                        <div class="coordinates">
+                            <span id="coordinates"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="loadingState" class="loading hidden">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Finding your jurisdiction...</p>
+                </div>
+            </section>
+
+            <!-- Jurisdiction Results -->
+            <section id="jurisdictionSection" class="jurisdiction-section hidden">
+                <h2><i class="fas fa-building-shield"></i> Your Law Enforcement Agency</h2>
+
+                <div id="jurisdictionResults" class="jurisdiction-results">
+                    <!-- Results will be populated by JavaScript -->
+                </div>
+            </section>
+
+            <!-- Error Display -->
+            <div id="errorDisplay" class="error-display hidden">
+                <i class="fas fa-exclamation-circle"></i>
+                <p id="errorMessage"></p>
+            </div>
+        </main>
+
+        <footer class="app-footer">
+            <p>&copy; 2025 Texas Law Enforcement Locator. Information provided for reference only.</p>
+            <p>Always verify contact information before making important reports.</p>
+            <p><a href="admin.html" class="footer-link"><i class="fas fa-cog"></i> Manage Agency Contacts</a></p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('SW registered:', reg.scope))
+                    .catch(err => console.log('SW registration failed:', err));
+            });
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#343a40">
+    <title>Agency Contact Management | TXLE Locator</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+    <link rel="stylesheet" href="admin.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <header class="admin-header">
+        <div class="header-content">
+            <a href="index.html" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Locator
+            </a>
+            <h1><i class="fas fa-database"></i> Agency Contact Management</h1>
+            <p class="subtitle">Add and manage law enforcement agency contact information for jurisdictions</p>
+        </div>
+    </header>
+
+    <main class="container admin-container" id="adminContent" style="display:none;">
+
+        <!-- PIN Verification Overlay -->
+        <div id="pinOverlay" class="pin-overlay">
+            <div class="pin-card">
+                <div class="pin-icon">
+                    <i class="fas fa-lock"></i>
+                </div>
+
+                <!-- Setup Form (first time) -->
+                <div id="pinSetup" class="pin-form hidden">
+                    <h2>Set Admin PIN</h2>
+                    <p>Choose a PIN to protect admin access. This is stored locally in your browser.</p>
+                    <div class="pin-inputs">
+                        <input type="password" id="pinSetup1" maxlength="6" inputmode="numeric"
+                               placeholder="Enter PIN" autocomplete="new-password">
+                        <input type="password" id="pinSetup2" maxlength="6" inputmode="numeric"
+                               placeholder="Confirm PIN" autocomplete="new-password">
+                    </div>
+                    <p id="pinSetupError" class="pin-error hidden"></p>
+                    <button id="pinSetupBtn" class="btn btn-primary pin-btn">
+                        <i class="fas fa-check"></i> Set PIN
+                    </button>
+                </div>
+
+                <!-- Entry Form (returning) -->
+                <div id="pinEntry" class="pin-form hidden">
+                    <h2>Admin Access</h2>
+                    <p>Enter your PIN to manage agency contacts.</p>
+                    <div class="pin-inputs">
+                        <input type="password" id="pinEntryInput" maxlength="6" inputmode="numeric"
+                               placeholder="Enter PIN" autocomplete="current-password">
+                    </div>
+                    <p id="pinEntryError" class="pin-error hidden"></p>
+                    <button id="pinEntryBtn" class="btn btn-primary pin-btn">
+                        <i class="fas fa-unlock"></i> Unlock
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add/Edit Form -->
+        <section class="form-section">
+            <h2><i class="fas fa-plus-circle"></i> Add/Edit Agency</h2>
+            <form id="agencyForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="jurisdictionType">
+                            <i class="fas fa-layer-group"></i> Jurisdiction Type
+                        </label>
+                        <select id="jurisdictionType" required>
+                            <option value="">Select type</option>
+                            <option value="city">City Police Department</option>
+                            <option value="county">County Sheriff's Office</option>
+                            <option value="state">State Police</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="jurisdictionName">
+                            <i class="fas fa-map-marker-alt"></i> Jurisdiction Name
+                        </label>
+                        <input type="text" id="jurisdictionName" required
+                               placeholder="e.g., Austin, Travis, Texas">
+                        <small>For city/county: use proper name. For state: leave as "Texas"</small>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="agencyName">
+                            <i class="fas fa-building-shield"></i> Agency Name
+                        </label>
+                        <input type="text" id="agencyName" required
+                               placeholder="e.g., Austin Police Department">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="phone">
+                            <i class="fas fa-phone"></i> Non-Emergency Phone
+                        </label>
+                        <input type="tel" id="phone" required
+                               placeholder="(512) 974-5000">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="emergencyPhone">
+                            <i class="fas fa-exclamation-triangle"></i> Emergency Phone
+                        </label>
+                        <input type="tel" id="emergencyPhone" value="911" readonly>
+                        <small>Always 911</small>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="address">
+                            <i class="fas fa-location-dot"></i> Address
+                        </label>
+                        <input type="text" id="address" required
+                               placeholder="Street address, city, state, zip">
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="website">
+                            <i class="fas fa-globe"></i> Agency Website
+                        </label>
+                        <input type="url" id="website" required
+                               placeholder="https://www.austintexas.gov/department/police">
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="onlineReporting">
+                            <i class="fas fa-file-lines"></i> Online Reporting URL
+                        </label>
+                        <input type="url" id="onlineReporting"
+                               placeholder="https://www.austintexas.gov/page/file-police-report-online">
+                        <small>Optional: URL for filing non-emergency reports online</small>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" id="saveBtn" class="btn btn-success">
+                        <i class="fas fa-save"></i> Save Agency
+                    </button>
+                    <button type="button" id="clearBtn" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Clear Form
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Agency List -->
+        <section class="list-section">
+            <div class="section-header">
+                <h2><i class="fas fa-list"></i> Current Agencies</h2>
+                <div class="list-controls">
+                    <div class="search-box">
+                        <input type="text" id="searchAgencies" placeholder="Search agencies...">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <button id="exportBtn" class="btn btn-secondary">
+                        <i class="fas fa-download"></i> Export JSON
+                    </button>
+                    <button id="importBtn" class="btn btn-secondary">
+                        <i class="fas fa-upload"></i> Import JSON
+                    </button>
+                    <input type="file" id="importFile" accept=".json" hidden>
+                </div>
+            </div>
+
+            <div class="agency-list" id="agencyList">
+                <!-- Agencies will be populated here -->
+            </div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <i class="fas fa-city"></i>
+                    <span id="cityCount">0</span>
+                    <small>Cities</small>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-flag"></i>
+                    <span id="countyCount">0</span>
+                    <small>Counties</small>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-star"></i>
+                    <span id="stateCount">0</span>
+                    <small>State Agencies</small>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-database"></i>
+                    <span id="totalCount">0</span>
+                    <small>Total</small>
+                </div>
+            </div>
+        </section>
+
+        <!-- Default Agency -->
+        <section class="default-section">
+            <h2><i class="fas fa-star"></i> Default Agency (Texas DPS)</h2>
+            <p class="description">Shown when no specific city/county agency matches. Usually Texas Department of Public Safety.</p>
+            <div id="defaultAgencyCard" class="default-card">
+                <div class="default-content">
+                    <i class="fas fa-shield-alt"></i>
+                    <div>
+                        <h3 id="defaultName">No default agency configured</h3>
+                        <p id="defaultContact" class="text-muted">Add Texas DPS contact information</p>
+                    </div>
+                </div>
+                <button id="editDefaultBtn" class="btn btn-primary">
+                    <i class="fas fa-edit"></i> Set Default Agency
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <footer class="admin-footer">
+        <p>Agency contact data is stored locally in your browser. Data is not shared or uploaded.</p>
+        <p><a href="index.html" class="footer-link"><i class="fas fa-shield-alt"></i> Back to TXLE Locator</a></p>
+    </footer>
+
+    <!-- Import/Export Modals -->
+    <div id="exportModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-file-export"></i> Export Agency Data</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Copy this JSON data to back up your agency contacts:</p>
+                <textarea id="exportData" readonly></textarea>
+            </div>
+            <div class="modal-footer">
+                <button id="copyExportBtn" class="btn btn-primary">
+                    <i class="fas fa-copy"></i> Copy to Clipboard
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="importModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-file-import"></i> Import Agency Data</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="drop-zone" id="dropZone">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Drag & drop JSON file or <button class="btn-link">click to browse</button></p>
+                </div>
+                <p class="warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Importing will <strong>replace</strong> all current agency data.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button id="confirmImportBtn" class="btn btn-danger" disabled>
+                    <i class="fas fa-check"></i> Confirm Import
+                </button>
+                <button id="cancelImportBtn" class="btn btn-secondary">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

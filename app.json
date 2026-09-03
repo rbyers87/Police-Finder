@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Texas Law Enforcement Lookup",
+    "slug": "texas-law-enforcement",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#004080"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.texaslawenforcement.lookup",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs location access to determine which law enforcement agency has jurisdiction in your area.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs location access to determine which law enforcement agency has jurisdiction in your area."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#004080"
+      },
+      "package": "com.texaslawenforcement.lookup",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "This app needs location access to determine which law enforcement agency has jurisdiction in your area."
+        }
+      ]
+    ]
+  }
+}
