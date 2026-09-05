@@ -265,6 +265,19 @@
             ? address
             : `${address}, Texas`;
 
+        // Try Nominatim first — best coverage for partial street names & landmarks
+        const nominatimResult = await tryNominatimSearch(searchAddr);
+        if (nominatimResult) return nominatimResult;
+
+        // Fallback to Esri's World Geocoder — better coverage for rural/newer
+        // addresses (and some agency addresses) missing from OpenStreetMap.
+        const esriResult = await tryEsriSearch(searchAddr);
+        if (esriResult) return esriResult;
+
+        return null;
+    }
+
+    async function tryNominatimSearch(searchAddr) {
         const params = new URLSearchParams({
             q: searchAddr,
             format: 'json',
@@ -276,6 +289,10 @@
             const resp = await fetch(`${NOMINATIM_SEARCH}?${params}`, {
                 headers: { 'Accept-Language': 'en' }
             });
+            if (!resp.ok) {
+                console.warn('Nominatim search failed with status', resp.status);
+                return null;
+            }
             const results = await resp.json();
             if (results.length > 0) {
                 return {
@@ -285,7 +302,37 @@
                 };
             }
         } catch (err) {
-            console.warn('Geocode search failed:', err);
+            console.warn('Nominatim search failed:', err);
+        }
+        return null;
+    }
+
+    async function tryEsriSearch(searchAddr) {
+        // Esri returns coordinates as {x: lng, y: lat} in WGS84.
+        const params = new URLSearchParams({
+            f: 'json',
+            singleLine: searchAddr,
+            maxLocations: 1,
+            outFields: 'Match_addr'
+        });
+
+        try {
+            const resp = await fetch(`${ESRI_GEOCODE}?${params}`);
+            if (!resp.ok) {
+                console.warn('Esri geocode search failed with status', resp.status);
+                return null;
+            }
+            const data = await resp.json();
+            const candidate = data.candidates && data.candidates[0];
+            if (candidate && candidate.location) {
+                return {
+                    lat: parseFloat(candidate.location.y),
+                    lng: parseFloat(candidate.location.x),
+                    displayName: candidate.address || (candidate.attributes && candidate.attributes.Match_addr) || searchAddr
+                };
+            }
+        } catch (err) {
+            console.warn('Esri geocode search failed:', err);
         }
         return null;
     }

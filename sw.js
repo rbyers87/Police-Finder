@@ -1,18 +1,22 @@
 // Service Worker for Texas Law Enforcement Locator PWA
 
-const CACHE_NAME = 'txle-locator-v1';
+const CACHE_NAME = 'txle-locator-v2';
 
 const APP_SHELL = [
     '/',
     '/index.html',
     '/styles.css',
     '/app.js',
-    '/manifest.json',
     '/admin.html',
     '/admin.js',
     '/admin.css',
-    '/assets/icon.png',
-    '/assets/favicon.png'
+    '/assets/site.webmanifest',
+    '/assets/favicon.ico',
+    '/assets/favicon-16x16.png',
+    '/assets/favicon-32x32.png',
+    '/assets/apple-touch-icon.png',
+    '/assets/android-chrome-192x192.png',
+    '/assets/android-chrome-512x512.png'
 ];
 
 // ── Install ────────────────────────────────────────────────────────────────
