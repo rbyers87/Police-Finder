@@ -18,7 +18,8 @@ const APP_SHELL = [
     './assets/favicon-32x32.png',
     './assets/apple-touch-icon.png',
     './assets/android-chrome-192x192.png',
-    './assets/android-chrome-512x512.png'
+    './assets/android-chrome-512x512.png',
+    './assets/Wallpaper.jpg'
 ];
 
 // ── Install ────────────────────────────────────────────────────────────────

@@ -21,13 +21,29 @@
 
 <body>
     <div id="app">
-        <header class="app-header">
-            <div class="header-content">
-                <i class="fas fa-shield-alt"></i>
-                <h1>Texas Law Enforcement Lookup</h1>
-                <p class="subtitle">Find your local law enforcement agency</p>
+
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-card">
+                <div class="hero-card-dots">
+                    <span></span><span></span><span></span>
+                </div>
+                <h1>TEXAS POLICE<br>JURISDICTION<br>LOOKUP</h1>
+                <p class="hero-subtitle">FIND YOUR LOCAL DEPARTMENT</p>
+                <div class="hero-search">
+                    <div class="hero-search-input-wrap">
+                        <i class="fas fa-search hero-search-icon"></i>
+                        <input type="text" id="addressSearch" placeholder="Enter Address, Zip Code, or City">
+                        <button id="getCurrentLocation" class="hero-location-btn" title="Use my location">
+                            <i class="fas fa-location-crosshairs"></i>
+                        </button>
+                    </div>
+                    <button id="searchAddress" class="hero-search-btn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
             </div>
-        </header>
+        </section>
 
         <main class="container">
             <!-- Emergency Disclaimer -->
@@ -39,43 +55,22 @@
                 </div>
             </div>
 
-            <!-- Location Section -->
-            <section class="location-section">
-                <div class="section-header">
-                    <h2><i class="fas fa-location-dot"></i> Your Location</h2>
-                    <button id="getCurrentLocation" class="btn btn-primary">
-                        <i class="fas fa-crosshairs"></i> Use My Location
-                    </button>
-                </div>
-
-                <!-- Search Box -->
-                <div class="search-container">
-                    <div class="search-box">
-                        <input type="text" id="addressSearch" placeholder="Or enter an address in Texas..."
-                            class="search-input">
-                        <button id="searchAddress" class="btn btn-secondary">
-                            <i class="fas fa-search"></i>
-                        </button>
+            <!-- Location Display (shown after search) -->
+            <div id="locationDisplay" class="location-display hidden">
+                <div class="location-info">
+                    <h3 id="locationName"></h3>
+                    <p id="locationDetails"></p>
+                    <div class="coordinates">
+                        <span id="coordinates"></span>
                     </div>
                 </div>
+            </div>
 
-                <!-- Location Display -->
-                <div id="locationDisplay" class="location-display hidden">
-                    <div class="location-info">
-                        <h3 id="locationName"></h3>
-                        <p id="locationDetails"></p>
-                        <div class="coordinates">
-                            <span id="coordinates"></span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Loading State -->
-                <div id="loadingState" class="loading hidden">
-                    <i class="fas fa-spinner fa-spin"></i>
-                    <p>Finding your jurisdiction...</p>
-                </div>
-            </section>
+            <!-- Loading State -->
+            <div id="loadingState" class="loading hidden">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Finding your jurisdiction...</p>
+            </div>
 
             <!-- Jurisdiction Results -->
             <section id="jurisdictionSection" class="jurisdiction-section hidden">
