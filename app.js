@@ -623,6 +623,14 @@
 
         jurisdictionResults.innerHTML = html;
         jurisdictionSection.classList.remove('hidden');
+        scrollToResults();
+    }
+
+    // ── Scroll to Results ────────────────────────────────────────────────────
+    function scrollToResults() {
+        setTimeout(() => {
+            jurisdictionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
     }
 
     // ── Main Lookup Flow ────────────────────────────────────────────────────
