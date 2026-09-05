@@ -17,20 +17,20 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorDisplay from '../components/ErrorDisplay';
 
 export default function HomeScreen() {
-  const { 
-    location, 
-    locationInfo, 
-    isLoading, 
-    error, 
-    getCurrentLocation, 
+  const {
+    location,
+    locationInfo,
+    isLoading,
+    error,
+    getCurrentLocation,
     geocodeAddress,
-    clearLocation 
+    clearLocation
   } = useLocation();
-  
-  const { 
-    currentJurisdiction, 
-    updateJurisdiction, 
-    clearJurisdiction 
+
+  const {
+    currentJurisdiction,
+    updateJurisdiction,
+    clearJurisdiction
   } = useJurisdiction();
 
   const [searchText, setSearchText] = useState('');
@@ -78,13 +78,13 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <EmergencyBanner />
-        
+
         <LocationSection
           searchText={searchText}
           onSearchTextChange={setSearchText}
@@ -99,7 +99,7 @@ export default function HomeScreen() {
         {isLoading && <LoadingSpinner />}
 
         {locationInfo && (
-          <LocationDisplay 
+          <LocationDisplay
             locationInfo={locationInfo}
             onClear={handleClearResults}
           />
@@ -110,14 +110,14 @@ export default function HomeScreen() {
             <Text style={styles.sectionTitle}>
               🏛️ Your Law Enforcement Agency
             </Text>
-            
-            <JurisdictionCard 
+
+            <JurisdictionCard
               agency={currentJurisdiction.primary}
               isPrimary={true}
             />
-            
+
             {currentJurisdiction.backup && (
-              <JurisdictionCard 
+              <JurisdictionCard
                 agency={currentJurisdiction.backup}
                 isPrimary={false}
               />
@@ -127,7 +127,7 @@ export default function HomeScreen() {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            © 2025 Texas Law Enforcement Lookup
+            © 2026 Texas Law Enforcement Lookup
           </Text>
           <Text style={styles.footerSubtext}>
             Information provided for reference only. Always verify contact information before making important reports.
