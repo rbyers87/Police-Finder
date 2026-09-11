@@ -797,6 +797,13 @@
 
             if (!response.ok) {
                 const details = await response.json().catch(() => ({}));
+                if (response.status === 403 || response.status === 404) {
+                    throw new Error(
+                        `GitHub rejected the token (${details.message || response.status}). ` +
+                        `Check that it has "Contents: Read and write" access to ${GITHUB_OWNER}/${GITHUB_REPO} ` +
+                        `(fine-grained tokens) or the "repo"/"public_repo" scope (classic tokens).`
+                    );
+                }
                 throw new Error(details.message || `GitHub publish failed (${response.status})`);
             }
 
