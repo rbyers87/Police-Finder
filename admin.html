@@ -25,7 +25,27 @@
         </div>
     </header>
 
-    <main class="container admin-container" id="adminContent">
+    <!-- Password Gate Overlay -->
+    <div id="passwordOverlay" class="pin-overlay">
+        <div class="pin-card">
+            <div class="pin-icon">
+                <i class="fas fa-lock"></i>
+            </div>
+            <div id="passwordForm" class="pin-form">
+                <h2>Admin Access</h2>
+                <p>Enter the admin password to manage agency contacts.</p>
+                <div class="pin-inputs">
+                    <input type="password" id="passwordInput" maxlength="32" placeholder="Enter password" autocomplete="current-password">
+                </div>
+                <p id="passwordError" class="pin-error hidden"></p>
+                <button id="passwordBtn" class="btn btn-primary pin-btn">
+                    <i class="fas fa-unlock"></i> Unlock
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <main class="container admin-container" id="adminContent" style="display:none;">
 
         <!-- Add/Edit Form -->
         <section class="form-section">

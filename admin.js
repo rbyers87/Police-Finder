@@ -12,6 +12,67 @@
     const GITHUB_BRANCH = 'main';
     const GITHUB_DATA_PATH = 'agency-data.json';
 
+    // ── Password Gate ────────────────────────────────────────────────────────
+    const AUTH_SESSION_KEY = 'txle_admin_auth';
+    const ADMIN_HASH = '92854981408c85920f4d446368ad57db3f192ed17734ec1aecbddcb7d3c44c4c';
+    const ADMIN_SALT = 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6';
+
+    async function sha256(message) {
+        const msgBuffer = new TextEncoder().encode(message);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function verifyPassword(input) {
+        const hash = await sha256(input + ':' + ADMIN_SALT);
+        return hash === ADMIN_HASH;
+    }
+
+    function unlockAdmin() {
+        sessionStorage.setItem(AUTH_SESSION_KEY, '1');
+        document.getElementById('passwordOverlay').classList.add('hidden');
+        document.getElementById('adminContent').style.display = '';
+    }
+
+    function initPasswordGate() {
+        if (sessionStorage.getItem(AUTH_SESSION_KEY) === '1') {
+            document.getElementById('passwordOverlay').classList.add('hidden');
+            document.getElementById('adminContent').style.display = '';
+            return;
+        }
+    }
+
+    const passwordInput = document.getElementById('passwordInput');
+    const passwordBtn = document.getElementById('passwordBtn');
+    const passwordError = document.getElementById('passwordError');
+
+    passwordBtn.addEventListener('click', async () => {
+        const pwd = passwordInput.value.trim();
+        passwordError.classList.add('hidden');
+
+        if (!pwd) {
+            passwordError.textContent = 'Please enter a password.';
+            passwordError.classList.remove('hidden');
+            return;
+        }
+
+        if (await verifyPassword(pwd)) {
+            unlockAdmin();
+        } else {
+            passwordError.textContent = 'Incorrect password. Try again.';
+            passwordError.classList.remove('hidden');
+            passwordInput.value = '';
+            passwordInput.focus();
+        }
+    });
+
+    passwordInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); passwordBtn.click(); }
+    });
+
+    initPasswordGate();
+
     // ── DOM ─────────────────────────────────────────────────────────────────
 
     const form = document.getElementById('agencyForm');
