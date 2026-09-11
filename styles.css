@@ -419,7 +419,7 @@ body {
     background: #343a40;
     color: #adb5bd;
     text-align: center;
-    padding: 2rem 0;
+    padding: 2rem 20px;
     margin-top: 3rem;
 }
 
@@ -516,6 +516,17 @@ body {
     .btn {
         padding: 0.875rem 1.25rem;
         font-size: 0.95rem;
+    }
+
+    .app-footer {
+        padding: 1.25rem 20px;
+        margin-top: 2rem;
+    }
+
+    .app-footer p {
+        font-size: 0.8rem;
+        line-height: 1.45;
+        margin: 0.35rem 0;
     }
 }
 
