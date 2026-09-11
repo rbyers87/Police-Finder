@@ -87,6 +87,10 @@
 
     async function getDefaultAgency() {
         const db = await agencyDBPromise;
+        try {
+            const raw = localStorage.getItem('txle_default_agency');
+            if (raw) return JSON.parse(raw);
+        } catch { /* ignore */ }
         return db.defaultAgency;
     }
 
