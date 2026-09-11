@@ -7,153 +7,12 @@
     const DEFAULT_KEY = 'txle_default_agency';
     const SEED_VERSION_KEY = 'txle_seed_version';
     const CURRENT_SEED_VERSION = 2; // Bump this to force re-seed
-    const PIN_HASH_KEY = 'txle_admin_pin_hash';
-    const PIN_SALT_KEY = 'txle_admin_pin_salt';
-    const PIN_VERIFIED_KEY = 'txle_admin_pin_verified';
+    const GITHUB_OWNER = 'rbyers87';
+    const GITHUB_REPO = 'Police-Finder';
+    const GITHUB_BRANCH = 'main';
+    const GITHUB_DATA_PATH = 'agency-data.json';
 
-    // ── PIN Protection ──────────────────────────────────────────────────────
-
-    async function sha256(message) {
-        const msgBuffer = new TextEncoder().encode(message);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-
-    function generateSalt() {
-        const salt = new Uint8Array(16);
-        crypto.getRandomValues(salt);
-        return Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-
-    async function hashPin(pin, salt) {
-        return sha256(pin + ':' + salt);
-    }
-
-    function hasPinSetup() {
-        return !!localStorage.getItem(PIN_HASH_KEY) && !!localStorage.getItem(PIN_SALT_KEY);
-    }
-
-    async function verifyPin(pin) {
-        const storedHash = localStorage.getItem(PIN_HASH_KEY);
-        const salt = localStorage.getItem(PIN_SALT_KEY);
-        if (!storedHash || !salt) return false;
-        const hash = await hashPin(pin, salt);
-        return hash === storedHash;
-    }
-
-    async function setupPin(pin) {
-        const salt = generateSalt();
-        const hash = await hashPin(pin, salt);
-        localStorage.setItem(PIN_HASH_KEY, hash);
-        localStorage.setItem(PIN_SALT_KEY, salt);
-    }
-
-    function unlockAdmin() {
-        sessionStorage.setItem(PIN_VERIFIED_KEY, '1');
-        document.getElementById('pinOverlay').classList.add('hidden');
-        document.getElementById('adminContent').style.display = '';
-    }
-
-    function isSessionUnlocked() {
-        return sessionStorage.getItem(PIN_VERIFIED_KEY) === '1';
-    }
-
-    // PIN setup form
-    const pinSetup = document.getElementById('pinSetup');
-    const pinEntry = document.getElementById('pinEntry');
-    const pinSetup1 = document.getElementById('pinSetup1');
-    const pinSetup2 = document.getElementById('pinSetup2');
-    const pinSetupBtn = document.getElementById('pinSetupBtn');
-    const pinSetupError = document.getElementById('pinSetupError');
-    const pinEntryInput = document.getElementById('pinEntryInput');
-    const pinEntryBtn = document.getElementById('pinEntryBtn');
-    const pinEntryError = document.getElementById('pinEntryError');
-
-    function initPinGate() {
-        // If already unlocked this session, skip everything
-        if (isSessionUnlocked()) {
-            document.getElementById('pinOverlay').classList.add('hidden');
-            document.getElementById('adminContent').style.display = '';
-            return;
-        }
-
-        // Show the main container but keep overlay visible
-        document.getElementById('adminContent').style.display = '';
-
-        if (hasPinSetup()) {
-            // Returning user — show PIN entry
-            pinEntry.classList.remove('hidden');
-            pinSetup.classList.add('hidden');
-            setTimeout(() => pinEntryInput.focus(), 100);
-        } else {
-            // First time — show PIN setup
-            pinSetup.classList.remove('hidden');
-            pinEntry.classList.add('hidden');
-            setTimeout(() => pinSetup1.focus(), 100);
-        }
-    }
-
-    if (pinSetupBtn) {
-        pinSetupBtn.addEventListener('click', async () => {
-            const p1 = pinSetup1.value.trim();
-            const p2 = pinSetup2.value.trim();
-            pinSetupError.classList.add('hidden');
-
-            if (p1.length < 4) {
-                pinSetupError.textContent = 'PIN must be at least 4 digits.';
-                pinSetupError.classList.remove('hidden');
-                return;
-            }
-            if (p1.length > 6) {
-                pinSetupError.textContent = 'PIN must be 6 digits or fewer.';
-                pinSetupError.classList.remove('hidden');
-                return;
-            }
-            if (p1 !== p2) {
-                pinSetupError.textContent = 'PINs do not match.';
-                pinSetupError.classList.remove('hidden');
-                return;
-            }
-
-            await setupPin(p1);
-            unlockAdmin();
-        });
-
-        // Submit on Enter in confirm field
-        pinSetup2.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); pinSetupBtn.click(); }
-        });
-    }
-
-    if (pinEntryBtn) {
-        pinEntryBtn.addEventListener('click', async () => {
-            const pin = pinEntryInput.value.trim();
-            pinEntryError.classList.add('hidden');
-
-            if (!pin) {
-                pinEntryError.textContent = 'Please enter your PIN.';
-                pinEntryError.classList.remove('hidden');
-                return;
-            }
-
-            const valid = await verifyPin(pin);
-            if (valid) {
-                unlockAdmin();
-            } else {
-                pinEntryError.textContent = 'Incorrect PIN. Try again.';
-                pinEntryError.classList.remove('hidden');
-                pinEntryInput.value = '';
-                pinEntryInput.focus();
-            }
-        });
-
-        pinEntryInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); pinEntryBtn.click(); }
-        });
-    }
-
-    // ── DOM (restored after PIN) ────────────────────────────────────────────
+    // ── DOM ─────────────────────────────────────────────────────────────────
 
     const form = document.getElementById('agencyForm');
     const jurisdictionType = document.getElementById('jurisdictionType');
@@ -169,6 +28,8 @@
     const searchInput = document.getElementById('searchAgencies');
     const exportBtn = document.getElementById('exportBtn');
     const importBtn = document.getElementById('importBtn');
+    const publishBtn = document.getElementById('publishBtn');
+    const publishStatus = document.getElementById('publishStatus');
     const importFile = document.getElementById('importFile');
 
     // Stats
@@ -825,6 +686,71 @@
         }, 2000);
     });
 
+    function encodeBase64(value) {
+        const bytes = new TextEncoder().encode(value);
+        let binary = '';
+        bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+        return btoa(binary);
+    }
+
+    async function publishToGitHub() {
+        const token = prompt('Enter a GitHub token with Contents: Read and write access. It is used for this publish only and is not saved.');
+        if (!token) return;
+
+        publishBtn.disabled = true;
+        publishStatus.textContent = 'Publishing shared agency data...';
+        publishStatus.className = 'publish-status';
+
+        const apiUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_DATA_PATH}`;
+        const headers = {
+            Accept: 'application/vnd.github+json',
+            Authorization: `Bearer ${token}`,
+            'X-GitHub-Api-Version': '2022-11-28'
+        };
+
+        try {
+            const db = loadDB();
+            const payload = JSON.stringify({
+                agencies: db.agencies,
+                defaultAgency: loadDefault() || db.defaultAgency || null
+            }, null, 2) + '\n';
+
+            const currentResponse = await fetch(`${apiUrl}?ref=${encodeURIComponent(GITHUB_BRANCH)}`, { headers });
+            let sha;
+            if (currentResponse.ok) {
+                sha = (await currentResponse.json()).sha;
+            } else if (currentResponse.status !== 404) {
+                throw new Error(`GitHub read failed (${currentResponse.status})`);
+            }
+
+            const response = await fetch(apiUrl, {
+                method: 'PUT',
+                headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: 'Update agency contact data',
+                    content: encodeBase64(payload),
+                    branch: GITHUB_BRANCH,
+                    ...(sha ? { sha } : {})
+                })
+            });
+
+            if (!response.ok) {
+                const details = await response.json().catch(() => ({}));
+                throw new Error(details.message || `GitHub publish failed (${response.status})`);
+            }
+
+            publishStatus.textContent = 'Published. The public app will use the update after GitHub Pages deploys it.';
+            publishStatus.classList.add('success');
+        } catch (error) {
+            publishStatus.textContent = error.message;
+            publishStatus.classList.add('error');
+        } finally {
+            publishBtn.disabled = false;
+        }
+    }
+
+    publishBtn.addEventListener('click', publishToGitHub);
+
     // Import
     importBtn.addEventListener('click', () => {
         importModal.classList.remove('hidden');
@@ -943,8 +869,5 @@
     seedIfEmpty();
     renderList();
     renderDefault();
-
-    // PIN gate — runs after everything else is wired up
-    initPinGate();
 
 })();

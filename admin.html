@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,6 +13,7 @@
     <link rel="stylesheet" href="admin.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
+
 <body>
     <header class="admin-header">
         <div class="header-content">
@@ -23,46 +25,7 @@
         </div>
     </header>
 
-    <main class="container admin-container" id="adminContent" style="display:none;">
-
-        <!-- PIN Verification Overlay -->
-        <div id="pinOverlay" class="pin-overlay">
-            <div class="pin-card">
-                <div class="pin-icon">
-                    <i class="fas fa-lock"></i>
-                </div>
-
-                <!-- Setup Form (first time) -->
-                <div id="pinSetup" class="pin-form hidden">
-                    <h2>Set Admin PIN</h2>
-                    <p>Choose a PIN to protect admin access. This is stored locally in your browser.</p>
-                    <div class="pin-inputs">
-                        <input type="password" id="pinSetup1" maxlength="6" inputmode="numeric"
-                               placeholder="Enter PIN" autocomplete="new-password">
-                        <input type="password" id="pinSetup2" maxlength="6" inputmode="numeric"
-                               placeholder="Confirm PIN" autocomplete="new-password">
-                    </div>
-                    <p id="pinSetupError" class="pin-error hidden"></p>
-                    <button id="pinSetupBtn" class="btn btn-primary pin-btn">
-                        <i class="fas fa-check"></i> Set PIN
-                    </button>
-                </div>
-
-                <!-- Entry Form (returning) -->
-                <div id="pinEntry" class="pin-form hidden">
-                    <h2>Admin Access</h2>
-                    <p>Enter your PIN to manage agency contacts.</p>
-                    <div class="pin-inputs">
-                        <input type="password" id="pinEntryInput" maxlength="6" inputmode="numeric"
-                               placeholder="Enter PIN" autocomplete="current-password">
-                    </div>
-                    <p id="pinEntryError" class="pin-error hidden"></p>
-                    <button id="pinEntryBtn" class="btn btn-primary pin-btn">
-                        <i class="fas fa-unlock"></i> Unlock
-                    </button>
-                </div>
-            </div>
-        </div>
+    <main class="container admin-container" id="adminContent">
 
         <!-- Add/Edit Form -->
         <section class="form-section">
@@ -85,8 +48,7 @@
                         <label for="jurisdictionName">
                             <i class="fas fa-map-marker-alt"></i> Jurisdiction Name
                         </label>
-                        <input type="text" id="jurisdictionName" required
-                               placeholder="e.g., Austin, Travis, Texas">
+                        <input type="text" id="jurisdictionName" required placeholder="e.g., Austin, Travis, Texas">
                         <small>For city/county: use proper name. For state: leave as "Texas"</small>
                     </div>
 
@@ -94,16 +56,14 @@
                         <label for="agencyName">
                             <i class="fas fa-building-shield"></i> Agency Name
                         </label>
-                        <input type="text" id="agencyName" required
-                               placeholder="e.g., Austin Police Department">
+                        <input type="text" id="agencyName" required placeholder="e.g., Austin Police Department">
                     </div>
 
                     <div class="form-group">
                         <label for="phone">
                             <i class="fas fa-phone"></i> Non-Emergency Phone
                         </label>
-                        <input type="tel" id="phone" required
-                               placeholder="(512) 974-5000">
+                        <input type="tel" id="phone" required placeholder="(512) 974-5000">
                     </div>
 
                     <div class="form-group">
@@ -118,8 +78,7 @@
                         <label for="address">
                             <i class="fas fa-location-dot"></i> Address
                         </label>
-                        <input type="text" id="address" required
-                               placeholder="Street address, city, state, zip">
+                        <input type="text" id="address" required placeholder="Street address, city, state, zip">
                     </div>
 
                     <div class="form-group full-width">
@@ -127,7 +86,7 @@
                             <i class="fas fa-globe"></i> Agency Website
                         </label>
                         <input type="url" id="website" required
-                               placeholder="https://www.austintexas.gov/department/police">
+                            placeholder="https://www.austintexas.gov/department/police">
                     </div>
 
                     <div class="form-group full-width">
@@ -135,7 +94,7 @@
                             <i class="fas fa-file-lines"></i> Online Reporting URL
                         </label>
                         <input type="url" id="onlineReporting"
-                               placeholder="https://www.austintexas.gov/page/file-police-report-online">
+                            placeholder="https://www.austintexas.gov/page/file-police-report-online">
                         <small>Optional: URL for filing non-emergency reports online</small>
                     </div>
                 </div>
@@ -166,9 +125,13 @@
                     <button id="importBtn" class="btn btn-secondary">
                         <i class="fas fa-upload"></i> Import JSON
                     </button>
+                    <button id="publishBtn" class="btn btn-success">
+                        <i class="fab fa-github"></i> Publish to GitHub
+                    </button>
                     <input type="file" id="importFile" accept=".json" hidden>
                 </div>
             </div>
+            <p id="publishStatus" class="publish-status" role="status"></p>
 
             <div class="agency-list" id="agencyList">
                 <!-- Agencies will be populated here -->
@@ -201,7 +164,8 @@
         <!-- Default Agency -->
         <section class="default-section">
             <h2><i class="fas fa-star"></i> Default Agency (Texas DPS)</h2>
-            <p class="description">Shown when no specific city/county agency matches. Usually Texas Department of Public Safety.</p>
+            <p class="description">Shown when no specific city/county agency matches. Usually Texas Department of Public
+                Safety.</p>
             <div id="defaultAgencyCard" class="default-card">
                 <div class="default-content">
                     <i class="fas fa-shield-alt"></i>
@@ -270,4 +234,5 @@
 
     <script src="admin.js"></script>
 </body>
+
 </html>

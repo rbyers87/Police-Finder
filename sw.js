@@ -1,6 +1,6 @@
 // Service Worker for Texas Law Enforcement Locator PWA
 
-const CACHE_NAME = 'txle-locator-v3';
+const CACHE_NAME = 'txle-locator-v4';
 
 // Paths are relative to this service worker's own URL (the repo/app root),
 // so they work on GitHub Pages subpath hosting (e.g. /Police-Finder/).
@@ -12,6 +12,7 @@ const APP_SHELL = [
     './admin.html',
     './admin.js',
     './admin.css',
+    './agency-data.json',
     './assets/site.webmanifest',
     './assets/favicon.ico',
     './assets/favicon-16x16.png',
@@ -67,6 +68,12 @@ self.addEventListener('fetch', (event) => {
 
     // Network-first for GIS/geocoding APIs
     if (API_HOSTS.some((host) => url.hostname.includes(host))) {
+        event.respondWith(networkFirst(event.request));
+        return;
+    }
+
+    // Shared agency contacts must be refreshed from GitHub when online.
+    if (url.pathname.endsWith('/agency-data.json')) {
         event.respondWith(networkFirst(event.request));
         return;
     }

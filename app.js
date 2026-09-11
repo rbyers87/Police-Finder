@@ -58,10 +58,17 @@
         'smith': '903', 'brazos': '979'
     };
 
-    // ── Contact Database (localStorage) ─────────────────────────────────────
+    // ── Contact Database ────────────────────────────────────────────────────
     const DB_KEY = 'txle_agencies';
 
-    function loadAgencyDB() {
+    async function loadAgencyDB() {
+        try {
+            const response = await fetch('./agency-data.json', { cache: 'no-store' });
+            if (response.ok) return await response.json();
+        } catch (err) {
+            console.warn('Shared agency data unavailable; using local cache:', err);
+        }
+
         try {
             const raw = localStorage.getItem(DB_KEY);
             return raw ? JSON.parse(raw) : { agencies: {}, defaultAgency: null };
@@ -70,19 +77,21 @@
         }
     }
 
-    function getAgency(jurisdictionType, jurisdictionName) {
-        const db = loadAgencyDB();
+    const agencyDBPromise = loadAgencyDB();
+
+    async function getAgency(jurisdictionType, jurisdictionName) {
+        const db = await agencyDBPromise;
         const key = `${jurisdictionType}:${jurisdictionName}`;
         return db.agencies[key] || null;
     }
 
-    function getDefaultAgency() {
-        // Check separate key first (set by admin page), fall back to inline
+    async function getDefaultAgency() {
+        const db = await agencyDBPromise;
         try {
             const raw = localStorage.getItem('txle_default_agency');
             if (raw) return JSON.parse(raw);
         } catch { /* ignore */ }
-        return loadAgencyDB().defaultAgency;
+        return db.defaultAgency;
     }
 
     // ── GIS Queries ─────────────────────────────────────────────────────────
@@ -200,7 +209,7 @@
 
             const data = await resp.json();
             const matches = data?.result?.geographies?.['Census Blocks'] ||
-                           data?.result?.geographies?.Places;
+                data?.result?.geographies?.Places;
             if (matches && matches.length > 0) {
                 // Look for Incorporated Place (sumlevel 162) or Census Designated Place (170)
                 for (const m of matches) {
@@ -358,7 +367,7 @@
             backup: null,
             primaryContact: null,
             backupContact: null,
-            defaultContact: getDefaultAgency()
+            defaultContact: await getDefaultAgency()
         };
 
         // Hierarchy: city is primary, county is backup
@@ -369,7 +378,7 @@
                 jurisdictionName: cityResult.name,
                 jurisdictionType: 'city'
             };
-            jurisdiction.primaryContact = getAgency('city', cityResult.name);
+            jurisdiction.primaryContact = await getAgency('city', cityResult.name);
 
             // If no contact on file, generate helpful fallback info
             if (!jurisdiction.primaryContact) {
@@ -394,7 +403,7 @@
             if (jurisdiction.primary) {
                 // City is primary, county is backup
                 jurisdiction.backup = countyAgency;
-                jurisdiction.backupContact = getAgency('county', countyResult.name);
+                jurisdiction.backupContact = await getAgency('county', countyResult.name);
 
                 // If no contact on file for county, generate fallback
                 if (!jurisdiction.backupContact) {
@@ -408,7 +417,7 @@
             } else {
                 // No city match — county is primary
                 jurisdiction.primary = countyAgency;
-                jurisdiction.primaryContact = getAgency('county', countyResult.name);
+                jurisdiction.primaryContact = await getAgency('county', countyResult.name);
 
                 if (!jurisdiction.primaryContact) {
                     jurisdiction.primaryContact = {
@@ -494,8 +503,8 @@
                     <div class="contact-item">
                         <i class="fas fa-phone"></i>
                         ${isRealPhone
-                            ? `<span>${phone}</span>`
-                            : `<span class="search-hint">${phone}</span>`}
+                        ? `<span>${phone}</span>`
+                        : `<span class="search-hint">${phone}</span>`}
                     </div>` : ''}
                     ${address ? `
                     <div class="contact-item">
@@ -506,8 +515,8 @@
                     <div class="contact-item">
                         <i class="fas fa-globe"></i>
                         ${isRealUrl
-                            ? `<a href="${website}" target="_blank" rel="noopener">${website}</a>`
-                            : `<span class="search-hint">${website}</span>`}
+                        ? `<a href="${website}" target="_blank" rel="noopener">${website}</a>`
+                        : `<span class="search-hint">${website}</span>`}
                     </div>` : ''}
                 </div>
                 <div class="contact-actions">

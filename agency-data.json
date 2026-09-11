@@ -1,0 +1,100 @@
+{
+    "agencies": {
+        "city:Austin": {
+            "jurisdictionName": "Austin",
+            "jurisdictionType": "city",
+            "agencyName": "Austin Police Department",
+            "phone": "(512) 974-5000",
+            "address": "715 E 8th St, Austin, TX 78701",
+            "website": "https://www.austintexas.gov/department/police",
+            "onlineReporting": "https://www.austintexas.gov/page/file-police-report-online"
+        },
+        "city:Houston": {
+            "jurisdictionName": "Houston",
+            "jurisdictionType": "city",
+            "agencyName": "Houston Police Department",
+            "phone": "(713) 884-3131",
+            "address": "1200 Travis St, Houston, TX 77002",
+            "website": "https://www.houstontx.gov/police/",
+            "onlineReporting": "https://www.houstontx.gov/police/online_report.htm"
+        },
+        "city:Dallas": {
+            "jurisdictionName": "Dallas",
+            "jurisdictionType": "city",
+            "agencyName": "Dallas Police Department",
+            "phone": "(214) 671-4282",
+            "address": "1400 S Lamar St, Dallas, TX 75215",
+            "website": "https://www.dallaspolice.net",
+            "onlineReporting": ""
+        },
+        "city:San Antonio": {
+            "jurisdictionName": "San Antonio",
+            "jurisdictionType": "city",
+            "agencyName": "San Antonio Police Department",
+            "phone": "(210) 207-7273",
+            "address": "315 S Santa Rosa Ave, San Antonio, TX 78207",
+            "website": "https://www.sanantonio.gov/SAPD",
+            "onlineReporting": ""
+        },
+        "city:Fort Worth": {
+            "jurisdictionName": "Fort Worth",
+            "jurisdictionType": "city",
+            "agencyName": "Fort Worth Police Department",
+            "phone": "(817) 392-4222",
+            "address": "350 W Belknap St, Fort Worth, TX 76102",
+            "website": "https://www.fortworthtexas.gov/departments/police",
+            "onlineReporting": ""
+        },
+        "county:Travis": {
+            "jurisdictionName": "Travis",
+            "jurisdictionType": "county",
+            "agencyName": "Travis County Sheriff's Office",
+            "phone": "(512) 854-9770",
+            "address": "5555 Airport Blvd, Austin, TX 78751",
+            "website": "https://www.tcso.org",
+            "onlineReporting": ""
+        },
+        "county:Harris": {
+            "jurisdictionName": "Harris",
+            "jurisdictionType": "county",
+            "agencyName": "Harris County Sheriff's Office",
+            "phone": "(713) 755-7628",
+            "address": "1200 Baker St, Houston, TX 77002",
+            "website": "https://www.hcso.org",
+            "onlineReporting": ""
+        },
+        "county:Dallas": {
+            "jurisdictionName": "Dallas",
+            "jurisdictionType": "county",
+            "agencyName": "Dallas County Sheriff's Department",
+            "phone": "(214) 749-8641",
+            "address": "133 N Industrial Blvd, Dallas, TX 75207",
+            "website": "https://www.dallascounty.org/departments/sheriff",
+            "onlineReporting": ""
+        },
+        "county:Tarrant": {
+            "jurisdictionName": "Tarrant",
+            "jurisdictionType": "county",
+            "agencyName": "Tarrant County Sheriff's Office",
+            "phone": "(817) 884-1213",
+            "address": "200 Taylor St, Fort Worth, TX 76196",
+            "website": "https://www.tarrantcounty.com/en/sheriff",
+            "onlineReporting": ""
+        },
+        "county:Bexar": {
+            "jurisdictionName": "Bexar",
+            "jurisdictionType": "county",
+            "agencyName": "Bexar County Sheriff's Office",
+            "phone": "(210) 335-6000",
+            "address": "200 N Comal St, San Antonio, TX 78207",
+            "website": "https://www.bexar.org/1250/Sheriffs-Office",
+            "onlineReporting": ""
+        }
+    },
+    "defaultAgency": {
+        "agencyName": "Texas Department of Public Safety",
+        "phone": "(512) 463-2000",
+        "address": "5805 N Lamar Blvd, Austin, TX 78752",
+        "website": "https://www.dps.texas.gov/"
+    }
+}

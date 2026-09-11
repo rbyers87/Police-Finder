@@ -64,6 +64,18 @@ npm start
 
 ## Data Integration
 
+### Shared Agency Contacts
+Agency contacts used by the web lookup are stored in `agency-data.json` and committed to this GitHub repository. The public app reads that file before resolving a search, so the data is shared across devices instead of being limited to browser `localStorage`.
+
+To publish an edit:
+
+1. Open `admin.html` and edit the agency information.
+2. Select **Publish to GitHub**.
+3. Enter a GitHub token with repository Contents read/write permission. The token is used for that request only and is not saved by the page.
+4. Wait for GitHub Pages to deploy the commit.
+
+Never place a GitHub token in this repository or in frontend source code. For unattended publishing, use a small authenticated server or GitHub App instead of a browser token.
+
 ### Current Implementation
 - Mock jurisdiction data for major Texas cities and counties
 - Simulated boundary checking using lat/lng ranges

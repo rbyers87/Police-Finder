@@ -64,7 +64,9 @@ body {
 }
 
 /* Sections */
-.form-section, .list-section, .default-section {
+.form-section,
+.list-section,
+.default-section {
     background: white;
     border-radius: 16px;
     padding: 2rem;
@@ -73,7 +75,9 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.form-section h2, .list-section h2, .default-section h2 {
+.form-section h2,
+.list-section h2,
+.default-section h2 {
     color: #004080;
     font-size: 1.4rem;
     margin-bottom: 1.5rem;
@@ -543,6 +547,21 @@ body {
 
 .hidden {
     display: none !important;
+}
+
+.publish-status {
+    min-height: 1.5rem;
+    margin: -1rem 0 1.5rem;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.publish-status.success {
+    color: #198754;
+}
+
+.publish-status.error {
+    color: #dc3545;
 }
 
 /* ── PIN Overlay ──────────────────────────────────────────────────────────── */
