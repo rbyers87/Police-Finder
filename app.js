@@ -59,22 +59,22 @@
     };
 
     // ── Contact Database ────────────────────────────────────────────────────
-    const DB_KEY = 'txle_agencies';
 
     async function loadAgencyDB() {
+        // The published agency-data.json file (updated via the admin page's
+        // "Publish to GitHub" button) is the single source of truth for
+        // every visitor. Deliberately no localStorage fallback here —
+        // admin edits should only take effect once they're actually
+        // published, not just for the browser that made them.
         try {
             const response = await fetch('./agency-data.json', { cache: 'no-store' });
             if (response.ok) return await response.json();
+            console.warn(`agency-data.json fetch returned ${response.status}`);
         } catch (err) {
-            console.warn('Shared agency data unavailable; using local cache:', err);
+            console.warn('Shared agency data unavailable:', err);
         }
 
-        try {
-            const raw = localStorage.getItem(DB_KEY);
-            return raw ? JSON.parse(raw) : { agencies: {}, defaultAgency: null };
-        } catch {
-            return { agencies: {}, defaultAgency: null };
-        }
+        return { agencies: {}, defaultAgency: null };
     }
 
     const agencyDBPromise = loadAgencyDB();
