@@ -23,30 +23,24 @@ body {
 .hero {
     position: relative;
     width: 100%;
-    min-height: 520px;
-    background: url('assets/Wallpaper.jpg') center/cover no-repeat;
+    min-height: 480px;
+    background: #004080;
     display: flex;
     align-items: center;
+    justify-content: center;
     padding: 3rem 5%;
     overflow: hidden;
-}
-
-.hero::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0.45) 38%, transparent 62%);
-    pointer-events: none;
 }
 
 .hero-card {
     position: relative;
     z-index: 2;
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.97);
     border-radius: 16px;
     padding: 2.5rem;
     max-width: 480px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    width: 100%;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
 }
 
 .hero-card-dots {
@@ -453,7 +447,6 @@ body {
     .hero {
         min-height: auto;
         padding: 2rem 4%;
-        background-position: center right;
     }
 
     .hero-card {
