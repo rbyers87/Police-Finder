@@ -51,6 +51,12 @@
         panhandleSE: { lat: 34.56, lng: -100.00, x: 338, y: 138 },
         texarkana: { lat: 33.40, lng: -94.04, x: 582, y: 185 },
         sabinePass: { lat: 29.75, lng: -93.85, x: 607, y: 312 },
+        // The Gulf Coast bows outward between Sabine Pass and Brownsville —
+        // a straight line between just those two points cuts across the
+        // coastline and lands coastal cities inland. These two additional
+        // bay landmarks keep the coast hugging the actual drawn outline.
+        galveston: { lat: 29.30, lng: -94.80, x: 554, y: 374 },
+        corpusChristi: { lat: 27.80, lng: -97.40, x: 465, y: 448 },
         brownsville: { lat: 25.90, lng: -97.50, x: 450, y: 558 }
     };
 
@@ -62,7 +68,9 @@
         ['elPaso', 'panhandleSW', 'panhandleSE'],
         ['elPaso', 'panhandleSE', 'texarkana'],
         ['elPaso', 'texarkana', 'sabinePass'],
-        ['elPaso', 'sabinePass', 'brownsville']
+        ['elPaso', 'sabinePass', 'galveston'],
+        ['elPaso', 'galveston', 'corpusChristi'],
+        ['elPaso', 'corpusChristi', 'brownsville']
     ].map(names => names.map(name => TX_MAP_POINTS[name]));
 
     /**
