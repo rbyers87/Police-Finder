@@ -17,12 +17,129 @@
     const jurisdictionResults = $('#jurisdictionResults');
     const errorDisplay = $('#errorDisplay');
     const errorMessage = $('#errorMessage');
+    const mapSection = $('#mapSection');
+    const txBeacon = $('#txBeacon');
 
     // ── Constants ───────────────────────────────────────────────────────────
     const TEXAS_BOUNDS = {
         minLat: 25.8, maxLat: 36.5,
         minLng: -106.6, maxLng: -93.5
     };
+
+    // ── Texas Map Beacon ────────────────────────────────────────────────────
+    // Maps a (lat, lng) onto a pixel position within assets/Wallpaper.jpg,
+    // which contains a hand-illustrated (not geographically precise) outline
+    // of Texas. Calibrated against landmark points measured directly from
+    // the artwork, using a triangulated piecewise-linear transform rather
+    // than a single linear scale — a flat scale visibly misplaces the
+    // Panhandle and Gulf Coast bulge, which aren't proportioned like a
+    // real projection in the illustration.
+    const TX_MAP_IMG = { width: 1407, height: 768 };
+
+    // name: { lat, lng, x, y } — x/y are pixel coordinates in Wallpaper.jpg
+    const TX_MAP_POINTS = {
+        elPaso: { lat: 31.76, lng: -106.49, x: 616, y: 337 },
+        panhandleNW: { lat: 36.50, lng: -103.04, x: 765, y: 112 },
+        panhandleNE: { lat: 36.50, lng: -100.00, x: 883, y: 114 },
+        panhandleSW: { lat: 34.56, lng: -103.04, x: 760, y: 335 },
+        panhandleSE: { lat: 34.56, lng: -100.00, x: 883, y: 210 },
+        texarkana: { lat: 33.40, lng: -94.04, x: 1090, y: 260 },
+        sabinePass: { lat: 29.75, lng: -93.85, x: 1160, y: 435 },
+        brownsville: { lat: 25.90, lng: -97.50, x: 989, y: 636 }
+    };
+
+    // Triangles covering the Panhandle (a small quad split in two) and the
+    // main body of the state (a fan out of El Paso, the state's western tip).
+    const TX_MAP_TRIANGLES = [
+        ['panhandleNW', 'panhandleNE', 'panhandleSE'],
+        ['panhandleNW', 'panhandleSE', 'panhandleSW'],
+        ['elPaso', 'panhandleSW', 'panhandleSE'],
+        ['elPaso', 'panhandleSE', 'texarkana'],
+        ['elPaso', 'texarkana', 'sabinePass'],
+        ['elPaso', 'sabinePass', 'brownsville']
+    ].map(names => names.map(name => TX_MAP_POINTS[name]));
+
+    /**
+     * Barycentric weights of point p=(px,py) relative to triangle a,b,c,
+     * all in the same 2D space. Returns [u, v, w] (weights for a, b, c)
+     * such that p = u*a + v*b + w*c and u+v+w=1. Works for any 2D space —
+     * used here first in (lng, lat) space to solve for weights, then those
+     * same weights are applied in pixel space to find the target position.
+     */
+    function barycentricWeights(px, py, ax, ay, bx, by, cx, cy) {
+        const v0x = bx - ax, v0y = by - ay;
+        const v1x = cx - ax, v1y = cy - ay;
+        const v2x = px - ax, v2y = py - ay;
+
+        const d00 = v0x * v0x + v0y * v0y;
+        const d01 = v0x * v1x + v0y * v1y;
+        const d11 = v1x * v1x + v1y * v1y;
+        const d20 = v2x * v0x + v2y * v0y;
+        const d21 = v2x * v1x + v2y * v1y;
+
+        const denom = d00 * d11 - d01 * d01;
+        if (Math.abs(denom) < 1e-9) return null;
+
+        const v = (d11 * d20 - d01 * d21) / denom;
+        const w = (d00 * d21 - d01 * d20) / denom;
+        const u = 1 - v - w;
+        return [u, v, w];
+    }
+
+    /**
+     * Converts a (lat, lng) to a { leftPct, topPct } position within
+     * Wallpaper.jpg, expressed as percentages so it stays aligned
+     * regardless of how large the image is displayed.
+     */
+    function geoToTexasMapPosition(lat, lng) {
+        let best = null; // { weights, triangle, badness }
+
+        for (const triangle of TX_MAP_TRIANGLES) {
+            const [a, b, c] = triangle;
+            const weights = barycentricWeights(lng, lat, a.lng, a.lat, b.lng, b.lat, c.lng, c.lat);
+            if (!weights) continue;
+
+            // How far outside this triangle the point falls (0 = inside).
+            const badness = weights.reduce((sum, w) => sum + Math.max(0, -w), 0);
+
+            if (badness === 0) {
+                best = { weights, triangle, badness };
+                break; // point is cleanly inside — use it
+            }
+            if (!best || badness < best.badness) {
+                best = { weights, triangle, badness };
+            }
+        }
+
+        if (!best) {
+            // Shouldn't happen with 6 triangles covering the whole state,
+            // but fall back to the geometric center of the image just in case.
+            return { leftPct: 50, topPct: 50 };
+        }
+
+        // Clamp and renormalize weights so a point outside every triangle
+        // (e.g. right at the state line) still lands sensibly near the
+        // nearest edge instead of flying off the image.
+        let [u, v, w] = best.weights.map(x => Math.max(0, x));
+        const sum = u + v + w || 1;
+        u /= sum; v /= sum; w /= sum;
+
+        const [a, b, c] = best.triangle;
+        const px = u * a.x + v * b.x + w * c.x;
+        const py = u * a.y + v * b.y + w * c.y;
+
+        return {
+            leftPct: (px / TX_MAP_IMG.width) * 100,
+            topPct: (py / TX_MAP_IMG.height) * 100
+        };
+    }
+
+    function showTexasBeacon(lat, lng) {
+        const { leftPct, topPct } = geoToTexasMapPosition(lat, lng);
+        txBeacon.style.left = `${leftPct}%`;
+        txBeacon.style.top = `${topPct}%`;
+        mapSection.classList.remove('hidden');
+    }
 
     const ARCGIS_ORG = 'https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services';
     const CENSUS_GEOCODE = 'https://geocoding.geo.census.gov/geocoder/geographies/coordinates';
@@ -59,22 +176,22 @@
     };
 
     // ── Contact Database ────────────────────────────────────────────────────
+    const DB_KEY = 'txle_agencies';
 
     async function loadAgencyDB() {
-        // The published agency-data.json file (updated via the admin page's
-        // "Publish to GitHub" button) is the single source of truth for
-        // every visitor. Deliberately no localStorage fallback here —
-        // admin edits should only take effect once they're actually
-        // published, not just for the browser that made them.
         try {
             const response = await fetch('./agency-data.json', { cache: 'no-store' });
             if (response.ok) return await response.json();
-            console.warn(`agency-data.json fetch returned ${response.status}`);
         } catch (err) {
-            console.warn('Shared agency data unavailable:', err);
+            console.warn('Shared agency data unavailable; using local cache:', err);
         }
 
-        return { agencies: {}, defaultAgency: null };
+        try {
+            const raw = localStorage.getItem(DB_KEY);
+            return raw ? JSON.parse(raw) : { agencies: {}, defaultAgency: null };
+        } catch {
+            return { agencies: {}, defaultAgency: null };
+        }
     }
 
     const agencyDBPromise = loadAgencyDB();
@@ -645,6 +762,7 @@
         showLoading(true);
         jurisdictionSection.classList.add('hidden');
         locationDisplay.classList.add('hidden');
+        mapSection.classList.add('hidden');
 
         try {
             // Validate Texas bounds
@@ -656,6 +774,7 @@
             // Reverse geocode for display
             const addressInfo = await reverseGeocode(lat, lng);
             showLocationInfo(lat, lng, addressInfo);
+            showTexasBeacon(lat, lng);
 
             // Resolve jurisdiction via GIS APIs
             const jurisdiction = await resolveJurisdiction(lat, lng);
