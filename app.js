@@ -34,18 +34,24 @@
     // than a single linear scale — a flat scale visibly misplaces the
     // Panhandle and Gulf Coast bulge, which aren't proportioned like a
     // real projection in the illustration.
-    const TX_MAP_IMG = { width: 1407, height: 768 };
+    const TX_MAP_IMG = { width: 863, height: 574 };
 
     // name: { lat, lng, x, y } — x/y are pixel coordinates in Wallpaper.jpg
+    // Re-measured for the current (863x574) version of the image. If the
+    // wallpaper is ever replaced or resized again, these x/y values (and
+    // TX_MAP_IMG above) need to be re-measured against the new file —
+    // percentages alone aren't enough because the Texas outline doesn't
+    // sit at a fixed fraction of the frame if the image is cropped
+    // differently, not just uniformly scaled.
     const TX_MAP_POINTS = {
-        elPaso: { lat: 31.76, lng: -106.49, x: 616, y: 337 },
-        panhandleNW: { lat: 36.50, lng: -103.04, x: 765, y: 112 },
-        panhandleNE: { lat: 36.50, lng: -100.00, x: 883, y: 114 },
-        panhandleSW: { lat: 34.56, lng: -103.04, x: 760, y: 335 },
-        panhandleSE: { lat: 34.56, lng: -100.00, x: 883, y: 210 },
-        texarkana: { lat: 33.40, lng: -94.04, x: 1090, y: 260 },
-        sabinePass: { lat: 29.75, lng: -93.85, x: 1160, y: 435 },
-        brownsville: { lat: 25.90, lng: -97.50, x: 989, y: 636 }
+        elPaso: { lat: 31.76, lng: -106.49, x: 75, y: 264 },
+        panhandleNW: { lat: 36.50, lng: -103.04, x: 220, y: 41 },
+        panhandleNE: { lat: 36.50, lng: -100.00, x: 338, y: 41 },
+        panhandleSW: { lat: 34.56, lng: -103.04, x: 222, y: 264 },
+        panhandleSE: { lat: 34.56, lng: -100.00, x: 338, y: 138 },
+        texarkana: { lat: 33.40, lng: -94.04, x: 582, y: 185 },
+        sabinePass: { lat: 29.75, lng: -93.85, x: 607, y: 312 },
+        brownsville: { lat: 25.90, lng: -97.50, x: 450, y: 558 }
     };
 
     // Triangles covering the Panhandle (a small quad split in two) and the
