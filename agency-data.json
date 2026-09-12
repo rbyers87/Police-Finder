@@ -244,13 +244,13 @@
       "onlineReporting": ""
     },
     "city:Port Arthur": {
-      "jurisdictionType": "city",
       "jurisdictionName": "Port Arthur",
+      "jurisdictionType": "city",
       "agencyName": "Port Arthur Police Department",
       "phone": "(409) 983-8600",
       "address": "645 4th St, Port Arthur, TX 77640",
       "website": "https://www.portarthurtx.gov/394/Police-Department",
-      "onlineReporting": "https://secure.coplogic.com/dors/startreport/300007546"
+      "onlineReporting": ""
     },
     "city:Port Neches": {
       "jurisdictionName": "Port Neches",
@@ -624,7 +624,7 @@
   },
   "defaultAgency": {
     "agencyName": "Texas Department of Public Safety",
-    "phone": "(512) 463-2000",
+    "phone": "(512) 424-2000",
     "address": "5805 N Lamar Blvd, Austin, TX 78752",
     "website": "https://www.dps.texas.gov/"
   }
