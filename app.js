@@ -19,6 +19,7 @@
     const errorMessage = $('#errorMessage');
     const mapSection = $('#mapSection');
     const txBeacon = $('#txBeacon');
+    const txBeaconGlow = $('#txBeaconGlow');
 
     // ── Constants ───────────────────────────────────────────────────────────
     const TEXAS_BOUNDS = {
@@ -27,131 +28,33 @@
     };
 
     // ── Texas Map Beacon ────────────────────────────────────────────────────
-    // Maps a (lat, lng) onto a pixel position within assets/Wallpaper.jpg,
-    // which contains a hand-illustrated (not geographically precise) outline
-    // of Texas. Calibrated against landmark points measured directly from
-    // the artwork, using a triangulated piecewise-linear transform rather
-    // than a single linear scale — a flat scale visibly misplaces the
-    // Panhandle and Gulf Coast bulge, which aren't proportioned like a
-    // real projection in the illustration.
-    const TX_MAP_IMG = { width: 863, height: 574 };
-
-    // name: { lat, lng, x, y } — x/y are pixel coordinates in Wallpaper.jpg
-    // Re-measured for the current (863x574) version of the image. If the
-    // wallpaper is ever replaced or resized again, these x/y values (and
-    // TX_MAP_IMG above) need to be re-measured against the new file —
-    // percentages alone aren't enough because the Texas outline doesn't
-    // sit at a fixed fraction of the frame if the image is cropped
-    // differently, not just uniformly scaled.
-    const TX_MAP_POINTS = {
-        elPaso: { lat: 31.76, lng: -106.49, x: 75, y: 264 },
-        panhandleNW: { lat: 36.50, lng: -103.04, x: 220, y: 41 },
-        panhandleNE: { lat: 36.50, lng: -100.00, x: 338, y: 41 },
-        panhandleSW: { lat: 34.56, lng: -103.04, x: 222, y: 264 },
-        panhandleSE: { lat: 34.56, lng: -100.00, x: 338, y: 138 },
-        texarkana: { lat: 33.40, lng: -94.04, x: 582, y: 185 },
-        sabinePass: { lat: 29.75, lng: -93.85, x: 607, y: 312 },
-        // The Gulf Coast bows outward between Sabine Pass and Brownsville —
-        // a straight line between just those two points cuts across the
-        // coastline and lands coastal cities inland. These two additional
-        // bay landmarks keep the coast hugging the actual drawn outline.
-        galveston: { lat: 29.30, lng: -94.80, x: 554, y: 374 },
-        corpusChristi: { lat: 27.80, lng: -97.40, x: 465, y: 448 },
-        brownsville: { lat: 25.90, lng: -97.50, x: 450, y: 558 }
+    // The map in #mapSection is an inline SVG traced from real Texas border
+    // coordinates (US Census TIGER-derived boundary), not a hand-illustrated
+    // approximation. That means placing a beacon is a straightforward,
+    // exact equirectangular projection — no calibration or guesswork
+    // needed — as long as these constants match how texas-map.svg's own
+    // path was generated (see PROJECTION below). If the SVG is ever
+    // regenerated from source data, these four numbers must match it.
+    const PROJECTION = {
+        minLng: -106.643603,
+        maxLat: 36.501861,
+        cosMeanLat: 0.8554121210292265, // cos(mean latitude), corrects x-scale
+        scale: 55,  // px per degree of latitude, matching texas-map.svg
+        pad: 16     // px margin baked into texas-map.svg's viewBox
     };
 
-    // Triangles covering the Panhandle (a small quad split in two) and the
-    // main body of the state (a fan out of El Paso, the state's western tip).
-    const TX_MAP_TRIANGLES = [
-        ['panhandleNW', 'panhandleNE', 'panhandleSE'],
-        ['panhandleNW', 'panhandleSE', 'panhandleSW'],
-        ['elPaso', 'panhandleSW', 'panhandleSE'],
-        ['elPaso', 'panhandleSE', 'texarkana'],
-        ['elPaso', 'texarkana', 'sabinePass'],
-        ['elPaso', 'sabinePass', 'galveston'],
-        ['elPaso', 'galveston', 'corpusChristi'],
-        ['elPaso', 'corpusChristi', 'brownsville']
-    ].map(names => names.map(name => TX_MAP_POINTS[name]));
-
-    /**
-     * Barycentric weights of point p=(px,py) relative to triangle a,b,c,
-     * all in the same 2D space. Returns [u, v, w] (weights for a, b, c)
-     * such that p = u*a + v*b + w*c and u+v+w=1. Works for any 2D space —
-     * used here first in (lng, lat) space to solve for weights, then those
-     * same weights are applied in pixel space to find the target position.
-     */
-    function barycentricWeights(px, py, ax, ay, bx, by, cx, cy) {
-        const v0x = bx - ax, v0y = by - ay;
-        const v1x = cx - ax, v1y = cy - ay;
-        const v2x = px - ax, v2y = py - ay;
-
-        const d00 = v0x * v0x + v0y * v0y;
-        const d01 = v0x * v1x + v0y * v1y;
-        const d11 = v1x * v1x + v1y * v1y;
-        const d20 = v2x * v0x + v2y * v0y;
-        const d21 = v2x * v1x + v2y * v1y;
-
-        const denom = d00 * d11 - d01 * d01;
-        if (Math.abs(denom) < 1e-9) return null;
-
-        const v = (d11 * d20 - d01 * d21) / denom;
-        const w = (d00 * d21 - d01 * d20) / denom;
-        const u = 1 - v - w;
-        return [u, v, w];
-    }
-
-    /**
-     * Converts a (lat, lng) to a { leftPct, topPct } position within
-     * Wallpaper.jpg, expressed as percentages so it stays aligned
-     * regardless of how large the image is displayed.
-     */
-    function geoToTexasMapPosition(lat, lng) {
-        let best = null; // { weights, triangle, badness }
-
-        for (const triangle of TX_MAP_TRIANGLES) {
-            const [a, b, c] = triangle;
-            const weights = barycentricWeights(lng, lat, a.lng, a.lat, b.lng, b.lat, c.lng, c.lat);
-            if (!weights) continue;
-
-            // How far outside this triangle the point falls (0 = inside).
-            const badness = weights.reduce((sum, w) => sum + Math.max(0, -w), 0);
-
-            if (badness === 0) {
-                best = { weights, triangle, badness };
-                break; // point is cleanly inside — use it
-            }
-            if (!best || badness < best.badness) {
-                best = { weights, triangle, badness };
-            }
-        }
-
-        if (!best) {
-            // Shouldn't happen with 6 triangles covering the whole state,
-            // but fall back to the geometric center of the image just in case.
-            return { leftPct: 50, topPct: 50 };
-        }
-
-        // Clamp and renormalize weights so a point outside every triangle
-        // (e.g. right at the state line) still lands sensibly near the
-        // nearest edge instead of flying off the image.
-        let [u, v, w] = best.weights.map(x => Math.max(0, x));
-        const sum = u + v + w || 1;
-        u /= sum; v /= sum; w /= sum;
-
-        const [a, b, c] = best.triangle;
-        const px = u * a.x + v * b.x + w * c.x;
-        const py = u * a.y + v * b.y + w * c.y;
-
-        return {
-            leftPct: (px / TX_MAP_IMG.width) * 100,
-            topPct: (py / TX_MAP_IMG.height) * 100
-        };
+    function geoToTexasSvgPosition(lat, lng) {
+        const cx = (lng - PROJECTION.minLng) * PROJECTION.cosMeanLat * PROJECTION.scale + PROJECTION.pad;
+        const cy = (PROJECTION.maxLat - lat) * PROJECTION.scale + PROJECTION.pad;
+        return { cx, cy };
     }
 
     function showTexasBeacon(lat, lng) {
-        const { leftPct, topPct } = geoToTexasMapPosition(lat, lng);
-        txBeacon.style.left = `${leftPct}%`;
-        txBeacon.style.top = `${topPct}%`;
+        const { cx, cy } = geoToTexasSvgPosition(lat, lng);
+        txBeacon.setAttribute('cx', cx);
+        txBeacon.setAttribute('cy', cy);
+        txBeaconGlow.setAttribute('cx', cx);
+        txBeaconGlow.setAttribute('cy', cy);
         mapSection.classList.remove('hidden');
     }
 
