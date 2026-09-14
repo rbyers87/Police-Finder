@@ -86,9 +86,18 @@
         'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer/0/query'
     ];
 
+    // Census Unified School District boundaries -- real polygon data, same
+    // family of service as the city/county lookups above (not a Texas-only
+    // dataset, but spatial intersection with a TX point naturally scopes it).
+    const ISD_ENDPOINTS = [
+        'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/School/MapServer/0/query',
+        'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer/14/query'
+    ];
+
     // Field names to try when parsing GIS responses (varies by endpoint)
     const CITY_NAME_FIELDS = ['CITY_NM', 'NAME', 'CITY_NAME', 'NAMELSAD', 'NAME10', 'FULLNAME'];
     const COUNTY_NAME_FIELDS = ['CNTY_NM', 'NAME', 'COUNTY_NAME', 'COUNTYNAME', 'NAMELSAD', 'COUNTY_FIPS'];
+    const ISD_NAME_FIELDS = ['BASENAME', 'NAME'];
 
     // Area codes by county for fallback contact generation
     const AREA_CODE_MAP = {
@@ -283,6 +292,84 @@
     }
 
     /**
+     * Query the Census Unified School District boundary containing the
+     * given point. This is real polygon data (same category as city/county
+     * above) — so, unlike colleges, ISD matching is exact, not proximity-based.
+     * Returns { name } or null.
+     */
+    async function queryISD(lat, lng) {
+        for (const endpoint of ISD_ENDPOINTS) {
+            try {
+                const params = new URLSearchParams({
+                    where: '1=1',
+                    geometry: `${lng},${lat}`,
+                    geometryType: 'esriGeometryPoint',
+                    inSR: '4326',
+                    spatialRel: 'esriSpatialRelIntersects',
+                    outFields: '*',
+                    returnGeometry: 'false',
+                    f: 'json'
+                });
+
+                const resp = await fetch(`${endpoint}?${params}`);
+                if (!resp.ok) continue;
+
+                const data = await resp.json();
+                if (data.error) continue;
+
+                if (data.features && data.features.length > 0) {
+                    const attrs = data.features[0].attributes;
+                    let name = extractFieldName(attrs, ISD_NAME_FIELDS);
+                    if (name) {
+                        name = name.replace(/ ISD$/i, '').replace(/ Independent School District$/i, '').trim();
+                        return { name };
+                    }
+                }
+            } catch (err) {
+                console.warn(`ISD endpoint failed: ${endpoint}`, err);
+            }
+        }
+        return null;
+    }
+
+    function haversineMiles(lat1, lng1, lat2, lng2) {
+        const toRad = (d) => (d * Math.PI) / 180;
+        const R = 3958.8; // Earth radius in miles
+        const dLat = toRad(lat2 - lat1);
+        const dLng = toRad(lng2 - lng1);
+        const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    /**
+     * Colleges have no standard, publicly queryable campus-boundary dataset
+     * the way cities/counties/ISDs do — so this matches by proximity to an
+     * admin-entered campus center point instead of a real polygon. Returns
+     * the closest campus within its configured radius, or null.
+     */
+    async function queryCollege(lat, lng) {
+        const db = await agencyDBPromise;
+        let closest = null;
+        let closestDist = Infinity;
+
+        for (const agency of Object.values(db.agencies || {})) {
+            if (agency.jurisdictionType !== 'college') continue;
+            const cLat = parseFloat(agency.campusLat);
+            const cLng = parseFloat(agency.campusLng);
+            const radius = parseFloat(agency.radiusMiles);
+            if (!isFinite(cLat) || !isFinite(cLng) || !isFinite(radius)) continue;
+
+            const dist = haversineMiles(lat, lng, cLat, cLng);
+            if (dist <= radius && dist < closestDist) {
+                closest = { name: agency.jurisdictionName };
+                closestDist = dist;
+            }
+        }
+        return closest;
+    }
+
+    /**
      * Get the area code for a county (used for fallback contact generation).
      */
     function getAreaCode(countyName) {
@@ -393,20 +480,28 @@
      * then resolves jurisdiction hierarchy (city > county > state).
      */
     async function resolveJurisdiction(lat, lng) {
-        // Run city and county queries in parallel
-        const [cityResult, countyResult] = await Promise.all([
+        // Run city, county, ISD, and college queries in parallel
+        const [cityResult, countyResult, isdResult, collegeResult] = await Promise.all([
             queryCity(lat, lng),
-            queryCounty(lat, lng)
+            queryCounty(lat, lng),
+            queryISD(lat, lng),
+            queryCollege(lat, lng)
         ]);
 
         // Build result object
         const jurisdiction = {
             city: cityResult,
             county: countyResult,
+            isd: isdResult,
+            college: collegeResult,
             primary: null,
             backup: null,
             primaryContact: null,
             backupContact: null,
+            // Additional, non-hierarchical matches (ISD/college police serve
+            // specific properties, not a general-purpose area the way city/
+            // county policing does, so they're shown alongside, not ranked).
+            additional: [],
             defaultContact: await getDefaultAgency()
         };
 
@@ -470,6 +565,40 @@
             }
         }
 
+        // ISD police (real boundary match — only shown when an ISD agency
+        // is actually on file, since most ISDs don't have their own PD and
+        // are served by local city/county police instead)
+        if (isdResult) {
+            const isdContact = await getAgency('isd', isdResult.name);
+            if (isdContact) {
+                jurisdiction.additional.push({
+                    agency: {
+                        name: isdContact.agencyName || `${isdResult.name} ISD Police Department`,
+                        type: 'ISD Police',
+                        jurisdictionName: isdResult.name,
+                        jurisdictionType: 'isd'
+                    },
+                    contact: isdContact
+                });
+            }
+        }
+
+        // College/university police (proximity match — see queryCollege)
+        if (collegeResult) {
+            const collegeContact = await getAgency('college', collegeResult.name);
+            if (collegeContact) {
+                jurisdiction.additional.push({
+                    agency: {
+                        name: collegeContact.agencyName || `${collegeResult.name} Police Department`,
+                        type: 'Campus Police',
+                        jurisdictionName: collegeResult.name,
+                        jurisdictionType: 'college'
+                    },
+                    contact: collegeContact
+                });
+            }
+        }
+
         // If nothing matched at all, use default (Texas DPS)
         if (!jurisdiction.primary) {
             jurisdiction.primary = {
@@ -528,10 +657,13 @@
         // Detect if website is a real URL vs a search suggestion
         const isRealUrl = website && (website.startsWith('http://') || website.startsWith('https://'));
 
-        const icon = isPrimary ? 'fa-shield-halved' : 'fa-building-shield';
-        const badge = isPrimary
-            ? '<span class="badge badge-primary">Primary Jurisdiction</span>'
-            : '<span class="badge badge-secondary">Secondary Jurisdiction</span>';
+        const iconByType = {
+            isd: 'fa-graduation-cap',
+            college: 'fa-graduation-cap'
+        };
+        const icon = iconByType[agency.jurisdictionType] || (isPrimary ? 'fa-shield-halved' : 'fa-building-shield');
+        const badgeClass = isPrimary ? 'badge-primary' : (agency.jurisdictionType === 'isd' || agency.jurisdictionType === 'college' ? 'badge-default' : 'badge-secondary');
+        const badge = `<span class="badge ${badgeClass}">${label}</span>`;
 
         let contactHTML = '';
         if (hasContact) {
@@ -663,7 +795,7 @@
             html += renderJurisdictionCard(
                 jurisdiction.primary,
                 jurisdiction.primaryContact,
-                'Primary',
+                'Primary Jurisdiction',
                 true
             );
         }
@@ -673,7 +805,19 @@
             html += renderJurisdictionCard(
                 jurisdiction.backup,
                 jurisdiction.backupContact,
-                'Secondary',
+                'Secondary Jurisdiction',
+                false
+            );
+        }
+
+        // ISD / college police — shown alongside city/county, not ranked
+        // against them (a campus or school property can have its own PD
+        // even though the surrounding area is also served by city/county).
+        for (const extra of jurisdiction.additional) {
+            html += renderJurisdictionCard(
+                extra.agency,
+                extra.contact,
+                'Also Serving This Area',
                 false
             );
         }
@@ -687,6 +831,8 @@
         const contextParts = [];
         if (jurisdiction.city) contextParts.push(`City: ${jurisdiction.city.name}`);
         if (jurisdiction.county) contextParts.push(`County: ${jurisdiction.county.name} County`);
+        if (jurisdiction.isd) contextParts.push(`ISD: ${jurisdiction.isd.name}`);
+        if (jurisdiction.college) contextParts.push(`Near: ${jurisdiction.college.name}`);
 
         if (contextParts.length > 0) {
             html = `
