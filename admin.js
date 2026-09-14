@@ -11,6 +11,34 @@
     const GITHUB_REPO = 'Police-Finder';
     const GITHUB_BRANCH = 'main';
     const GITHUB_DATA_PATH = 'agency-data.json';
+    const CORRECTIONS_LABEL = 'correction';
+    const LOCAL_CORRECTIONS_KEY = 'txle_agency_corrections';
+    // Shared with app.js on the public site (same origin) so a submission
+    // made from a browser with an active admin session creates a real
+    // GitHub issue instead of only saving locally.
+    const GITHUB_TOKEN_SESSION_KEY = 'txle_admin_gh_token';
+
+    function getAdminToken() {
+        return sessionStorage.getItem(GITHUB_TOKEN_SESSION_KEY) || null;
+    }
+
+    function setAdminToken(token) {
+        sessionStorage.setItem(GITHUB_TOKEN_SESSION_KEY, token);
+    }
+
+    function clearAdminToken() {
+        sessionStorage.removeItem(GITHUB_TOKEN_SESSION_KEY);
+    }
+
+    function githubHeaders(extra) {
+        const token = getAdminToken();
+        return {
+            Accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...extra
+        };
+    }
 
     // ── Password Gate ────────────────────────────────────────────────────────
     const AUTH_SESSION_KEY = 'txle_admin_auth';
@@ -92,6 +120,22 @@
     const publishBtn = document.getElementById('publishBtn');
     const publishStatus = document.getElementById('publishStatus');
     const importFile = document.getElementById('importFile');
+
+    // Sign-in
+    const githubTokenInput = document.getElementById('githubTokenInput');
+    const signinBtn = document.getElementById('signinBtn');
+    const signinForm = document.getElementById('signinForm');
+    const signedInStatus = document.getElementById('signedInStatus');
+    const signoutBtn = document.getElementById('signoutBtn');
+
+    // Corrections
+    const refreshCorrectionsBtn = document.getElementById('refreshCorrectionsBtn');
+    const githubCorrectionsList = document.getElementById('githubCorrectionsList');
+    const localCorrectionsList = document.getElementById('localCorrectionsList');
+    const editCorrectionModal = document.getElementById('editCorrectionModal');
+    const editCorrectionValue = document.getElementById('editCorrectionValue');
+    const saveCorrectionEditBtn = document.getElementById('saveCorrectionEditBtn');
+    const cancelCorrectionEditBtn = document.getElementById('cancelCorrectionEditBtn');
 
     // Stats
     const cityCount = document.getElementById('cityCount');
@@ -755,19 +799,20 @@
     }
 
     async function publishToGitHub() {
-        const token = prompt('Enter a GitHub token with Contents: Read and write access. It is used for this publish only and is not saved.');
-        if (!token) return;
+        const token = getAdminToken();
+        if (!token) {
+            publishStatus.textContent = 'Sign in with a GitHub token above first.';
+            publishStatus.className = 'publish-status error';
+            githubTokenInput.focus();
+            return;
+        }
 
         publishBtn.disabled = true;
         publishStatus.textContent = 'Publishing shared agency data...';
         publishStatus.className = 'publish-status';
 
         const apiUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_DATA_PATH}`;
-        const headers = {
-            Accept: 'application/vnd.github+json',
-            Authorization: `Bearer ${token}`,
-            'X-GitHub-Api-Version': '2022-11-28'
-        };
+        const headers = githubHeaders();
 
         try {
             const db = loadDB();
@@ -818,6 +863,35 @@
     }
 
     publishBtn.addEventListener('click', publishToGitHub);
+
+    // ── GitHub Sign-in ──────────────────────────────────────────────────────
+
+    function updateSigninUI() {
+        const signedIn = !!getAdminToken();
+        signinForm.classList.toggle('hidden', signedIn);
+        signedInStatus.classList.toggle('hidden', !signedIn);
+    }
+
+    signinBtn.addEventListener('click', () => {
+        const token = githubTokenInput.value.trim();
+        if (!token) return;
+        setAdminToken(token);
+        githubTokenInput.value = '';
+        updateSigninUI();
+        loadGithubCorrections();
+    });
+
+    githubTokenInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); signinBtn.click(); }
+    });
+
+    signoutBtn.addEventListener('click', () => {
+        clearAdminToken();
+        updateSigninUI();
+        githubCorrectionsList.innerHTML = '<p class="text-muted">Sign in with a GitHub token above to load these.</p>';
+    });
+
+    updateSigninUI();
 
     // Import
     importBtn.addEventListener('click', () => {
@@ -933,9 +1007,324 @@
         });
     });
 
+    // ── Correction Submissions ─────────────────────────────────────────────
+    //
+    // Public visitors suggest corrections from index.html. A submission
+    // becomes a real GitHub Issue (label "correction") when it's made from
+    // a browser with an active admin session (see GITHUB_TOKEN_SESSION_KEY);
+    // otherwise it's saved to this browser's localStorage only, and shows
+    // up below under "Local Submissions" if this admin page happens to be
+    // opened on that same device. This mirrors the CaseLaw-LE pattern:
+    // no backend, no external service, GitHub Issues + localStorage only.
+    //
+    // Issue body format (also produced by app.js on the public site):
+    //   **Agency:** <agency name>
+    //   **Jurisdiction Key:** <type>:<name>
+    //   **Field:** <phone|address|website|onlineReporting|agencyName>
+    //   **Current Value:** <...>
+    //   **Suggested Value:** <...>
+    //   **Note:** <optional free text>
+    //   **Submitted By:** <optional name/contact>
+
+    const FIELD_LABELS = {
+        phone: 'Phone',
+        address: 'Address',
+        website: 'Website',
+        onlineReporting: 'Online Reporting URL',
+        agencyName: 'Agency Name'
+    };
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str == null ? '' : String(str);
+        return div.innerHTML;
+    }
+
+    function parseCorrectionBody(body) {
+        const fields = {};
+        const re = /\*\*(.+?):\*\*[ \t]*(.*)/g;
+        let m;
+        while ((m = re.exec(body || '')) !== null) {
+            fields[m[1].trim()] = m[2].trim();
+        }
+        return {
+            agencyName: fields['Agency'] || '',
+            jurisdictionKey: fields['Jurisdiction Key'] || '',
+            field: fields['Field'] || '',
+            currentValue: fields['Current Value'] || '',
+            suggestedValue: fields['Suggested Value'] || '',
+            note: fields['Note'] || '',
+            submittedBy: fields['Submitted By'] || ''
+        };
+    }
+
+    function loadLocalCorrections() {
+        try {
+            const raw = localStorage.getItem(LOCAL_CORRECTIONS_KEY);
+            return raw ? JSON.parse(raw) : [];
+        } catch {
+            return [];
+        }
+    }
+
+    function saveLocalCorrections(list) {
+        localStorage.setItem(LOCAL_CORRECTIONS_KEY, JSON.stringify(list));
+    }
+
+    // In-session overrides for edited-but-not-yet-approved GitHub submissions
+    // (GitHub issues themselves aren't rewritten until Approve/Discard acts
+    // on them, so an in-progress edit just lives here until then).
+    const githubEditOverrides = {};
+
+    function correctionCardHtml(item, source) {
+        const override = source === 'github' ? githubEditOverrides[item.number] : null;
+        const suggestedValue = override !== undefined && override !== null ? override : item.suggestedValue;
+        const fieldLabel = FIELD_LABELS[item.field] || item.field || 'Field';
+        return `
+            <div class="correction-item" data-source="${source}" data-id="${source === 'github' ? item.number : item.id}">
+                <div class="correction-meta">
+                    <span class="correction-agency">${escapeHtml(item.agencyName || 'Unknown agency')}</span>
+                    <span class="correction-field-badge">${escapeHtml(fieldLabel)}</span>
+                </div>
+                <div class="correction-values">
+                    <div>Current: <span class="old-value">${escapeHtml(item.currentValue) || '(none)'}</span></div>
+                    <div>Suggested: <span class="new-value">${escapeHtml(suggestedValue) || '(none)'}</span></div>
+                </div>
+                ${item.note ? `<p class="correction-note">"${escapeHtml(item.note)}"</p>` : ''}
+                <p class="correction-submitted-by">
+                    ${item.submittedBy ? `Submitted by: ${escapeHtml(item.submittedBy)}` : 'Submitted anonymously'}
+                    ${item.timestamp ? ` &middot; ${new Date(item.timestamp).toLocaleString()}` : ''}
+                </p>
+                <div class="correction-actions">
+                    <button class="btn btn-success btn-approve-correction">
+                        <i class="fas fa-check"></i> Approve
+                    </button>
+                    <button class="btn btn-secondary btn-edit-correction">
+                        <i class="fas fa-pen"></i> Edit
+                    </button>
+                    <button class="btn btn-danger btn-discard-correction">
+                        <i class="fas fa-trash"></i> Discard
+                    </button>
+                    ${source === 'local' ? `
+                    <button class="btn btn-primary btn-send-correction">
+                        <i class="fas fa-cloud-arrow-up"></i> Send to GitHub
+                    </button>` : ''}
+                </div>
+            </div>`;
+    }
+
+    function renderLocalCorrections() {
+        const items = loadLocalCorrections();
+        localCorrectionsList.innerHTML = items.length
+            ? items.map((item) => correctionCardHtml(item, 'local')).join('')
+            : '<p class="text-muted">None yet.</p>';
+    }
+
+    let githubCorrectionIssues = [];
+
+    async function loadGithubCorrections() {
+        if (!getAdminToken()) {
+            githubCorrectionsList.innerHTML = '<p class="text-muted">Sign in with a GitHub token above to load these.</p>';
+            return;
+        }
+        githubCorrectionsList.innerHTML = '<p class="text-muted">Loading...</p>';
+        try {
+            const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues?state=open&labels=${encodeURIComponent(CORRECTIONS_LABEL)}&per_page=100`;
+            const response = await fetch(url, { headers: githubHeaders() });
+            if (!response.ok) throw new Error(`GitHub read failed (${response.status})`);
+            const issues = await response.json();
+            githubCorrectionIssues = issues.map((issue) => ({
+                number: issue.number,
+                ...parseCorrectionBody(issue.body)
+            }));
+            githubCorrectionsList.innerHTML = githubCorrectionIssues.length
+                ? githubCorrectionIssues.map((item) => correctionCardHtml(item, 'github')).join('')
+                : '<p class="text-muted">None pending.</p>';
+        } catch (error) {
+            githubCorrectionsList.innerHTML = `<p class="text-muted">Couldn't load: ${escapeHtml(error.message)}</p>`;
+        }
+    }
+
+    async function closeGithubIssue(number, comment) {
+        const headers = githubHeaders({ 'Content-Type': 'application/json' });
+        try {
+            await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues/${number}/comments`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ body: comment })
+            });
+        } catch { /* best-effort */ }
+        await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues/${number}`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify({ state: 'closed' })
+        });
+    }
+
+    async function sendLocalCorrectionToGithub(item) {
+        const token = getAdminToken();
+        if (!token) {
+            alert('Sign in with a GitHub token first.');
+            return;
+        }
+        const body = [
+            `**Agency:** ${item.agencyName || ''}`,
+            `**Jurisdiction Key:** ${item.jurisdictionKey || ''}`,
+            `**Field:** ${item.field || ''}`,
+            `**Current Value:** ${item.currentValue || ''}`,
+            `**Suggested Value:** ${item.suggestedValue || ''}`,
+            `**Note:** ${item.note || ''}`,
+            `**Submitted By:** ${item.submittedBy || ''}`
+        ].join('\n');
+
+        const response = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues`, {
+            method: 'POST',
+            headers: githubHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({
+                title: `Correction: ${item.agencyName || 'Unknown'} — ${FIELD_LABELS[item.field] || item.field}`,
+                body,
+                labels: [CORRECTIONS_LABEL]
+            })
+        });
+        if (!response.ok) {
+            const details = await response.json().catch(() => ({}));
+            throw new Error(details.message || `GitHub issue creation failed (${response.status})`);
+        }
+
+        const remaining = loadLocalCorrections().filter((i) => i.id !== item.id);
+        saveLocalCorrections(remaining);
+        renderLocalCorrections();
+        loadGithubCorrections();
+    }
+
+    function applyCorrectionToAgency(item) {
+        if (!item.field) {
+            alert('This submission is missing structured data and must be applied manually.');
+            return false;
+        }
+
+        if (item.jurisdictionKey === 'default') {
+            const current = loadDefault() || {};
+            current[item.field === 'agencyName' ? 'agencyName' : item.field] = item.suggestedValue;
+            saveDefault(current);
+            const db = loadDB();
+            db.defaultAgency = current;
+            saveDB(db);
+            renderDefault();
+            return true;
+        }
+
+        if (!item.jurisdictionKey) {
+            alert('This submission is missing structured data and must be applied manually.');
+            return false;
+        }
+
+        const db = loadDB();
+        const agency = db.agencies[item.jurisdictionKey];
+        if (!agency) {
+            alert(`No agency found for key "${item.jurisdictionKey}". It may have been renamed or removed — apply this manually if still relevant.`);
+            return false;
+        }
+        agency[item.field] = item.suggestedValue;
+        saveDB(db);
+        renderList(searchInput.value.trim());
+        return true;
+    }
+
+    let currentEditTarget = null; // { item, source }
+
+    function openEditCorrectionModal(item, source) {
+        currentEditTarget = { item, source };
+        const override = source === 'github' ? githubEditOverrides[item.number] : null;
+        editCorrectionValue.value = (override !== undefined && override !== null) ? override : item.suggestedValue;
+        editCorrectionModal.classList.remove('hidden');
+        editCorrectionValue.focus();
+    }
+
+    saveCorrectionEditBtn.addEventListener('click', () => {
+        if (!currentEditTarget) return;
+        const { item, source } = currentEditTarget;
+        const newValue = editCorrectionValue.value;
+        if (source === 'github') {
+            githubEditOverrides[item.number] = newValue;
+            githubCorrectionsList.innerHTML = githubCorrectionIssues.map((i) => correctionCardHtml(i, 'github')).join('');
+        } else {
+            const items = loadLocalCorrections().map((i) => i.id === item.id ? { ...i, suggestedValue: newValue } : i);
+            saveLocalCorrections(items);
+            renderLocalCorrections();
+        }
+        editCorrectionModal.classList.add('hidden');
+        currentEditTarget = null;
+    });
+
+    cancelCorrectionEditBtn.addEventListener('click', () => {
+        editCorrectionModal.classList.add('hidden');
+        currentEditTarget = null;
+    });
+
+    function handleCorrectionListClick(e, source, list) {
+        const card = e.target.closest('.correction-item');
+        if (!card) return;
+        const id = card.dataset.id;
+        const item = source === 'github'
+            ? list.find((i) => String(i.number) === id)
+            : list.find((i) => String(i.id) === id);
+        if (!item) return;
+
+        if (e.target.closest('.btn-edit-correction')) {
+            openEditCorrectionModal(item, source);
+            return;
+        }
+
+        if (e.target.closest('.btn-approve-correction')) {
+            const finalValue = source === 'github' && githubEditOverrides[item.number] != null
+                ? githubEditOverrides[item.number]
+                : item.suggestedValue;
+            const applied = applyCorrectionToAgency({ ...item, suggestedValue: finalValue });
+            if (source === 'github') {
+                closeGithubIssue(item.number, applied
+                    ? 'Approved and applied to agency-data.json. Remember to click "Publish to GitHub" to make it live.'
+                    : 'Reviewed, but could not auto-apply (agency not found). Please check manually.'
+                ).then(() => loadGithubCorrections());
+            } else {
+                saveLocalCorrections(loadLocalCorrections().filter((i) => i.id !== item.id));
+                renderLocalCorrections();
+            }
+            if (applied) {
+                alert('Correction applied. Click "Publish to GitHub" in the Current Agencies section to make it live.');
+            }
+            return;
+        }
+
+        if (e.target.closest('.btn-discard-correction')) {
+            if (!confirm('Discard this submission without applying it?')) return;
+            if (source === 'github') {
+                closeGithubIssue(item.number, 'Discarded — no change made.').then(() => loadGithubCorrections());
+            } else {
+                saveLocalCorrections(loadLocalCorrections().filter((i) => i.id !== item.id));
+                renderLocalCorrections();
+            }
+            return;
+        }
+
+        if (e.target.closest('.btn-send-correction')) {
+            sendLocalCorrectionToGithub(item).catch((err) => alert(err.message));
+        }
+    }
+
+    githubCorrectionsList.addEventListener('click', (e) => handleCorrectionListClick(e, 'github', githubCorrectionIssues));
+    localCorrectionsList.addEventListener('click', (e) => handleCorrectionListClick(e, 'local', loadLocalCorrections()));
+
+    refreshCorrectionsBtn.addEventListener('click', () => {
+        renderLocalCorrections();
+        loadGithubCorrections();
+    });
+
     // ── Init ────────────────────────────────────────────────────────────────
     seedIfEmpty();
     renderList();
     renderDefault();
+    renderLocalCorrections();
+    loadGithubCorrections();
 
 })();
