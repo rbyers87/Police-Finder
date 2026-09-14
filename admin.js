@@ -106,11 +106,16 @@
     const form = document.getElementById('agencyForm');
     const jurisdictionType = document.getElementById('jurisdictionType');
     const jurisdictionName = document.getElementById('jurisdictionName');
+    const jurisdictionNameHint = document.getElementById('jurisdictionNameHint');
     const agencyName = document.getElementById('agencyName');
     const phone = document.getElementById('phone');
     const address = document.getElementById('address');
     const website = document.getElementById('website');
     const onlineReporting = document.getElementById('onlineReporting');
+    const collegeFieldsGroup = document.getElementById('collegeFieldsGroup');
+    const campusLat = document.getElementById('campusLat');
+    const campusLng = document.getElementById('campusLng');
+    const radiusMiles = document.getElementById('radiusMiles');
     const saveBtn = document.getElementById('saveBtn');
     const clearBtn = document.getElementById('clearBtn');
     const agencyList = document.getElementById('agencyList');
@@ -140,6 +145,8 @@
     // Stats
     const cityCount = document.getElementById('cityCount');
     const countyCount = document.getElementById('countyCount');
+    const isdCount = document.getElementById('isdCount');
+    const collegeCount = document.getElementById('collegeCount');
     const stateCount = document.getElementById('stateCount');
     const totalCount = document.getElementById('totalCount');
 
@@ -660,12 +667,13 @@
                 </div>`;
         } else {
             agencyList.innerHTML = filtered.map(([key, agency]) => {
-                const icon = agency.jurisdictionType === 'city' ? 'fa-city'
-                           : agency.jurisdictionType === 'county' ? 'fa-flag'
-                           : 'fa-star';
-                const typeLabel = agency.jurisdictionType === 'city' ? 'City Police'
-                                : agency.jurisdictionType === 'county' ? 'County Sheriff'
-                                : 'State Police';
+                const ICONS = { city: 'fa-city', county: 'fa-flag', isd: 'fa-graduation-cap', college: 'fa-graduation-cap' };
+                const LABELS = { city: 'City Police', county: 'County Sheriff', isd: 'ISD Police', college: 'Campus Police' };
+                const icon = ICONS[agency.jurisdictionType] || 'fa-star';
+                const typeLabel = LABELS[agency.jurisdictionType] || 'State Police';
+                const campusInfo = agency.jurisdictionType === 'college' && agency.campusLat && agency.campusLng
+                    ? ` &middot; ${agency.radiusMiles || '?'} mi radius of (${agency.campusLat}, ${agency.campusLng})`
+                    : '';
 
                 return `
                     <div class="agency-item">
@@ -673,7 +681,7 @@
                             <h3>${agency.agencyName}</h3>
                             <div class="jurisdiction-type">
                                 <i class="fas ${icon}"></i>
-                                ${typeLabel} &middot; ${agency.jurisdictionName}
+                                ${typeLabel} &middot; ${agency.jurisdictionName}${campusInfo}
                             </div>
                             <div class="agency-contact">
                                 ${agency.phone || 'No phone'} &middot;
@@ -695,9 +703,13 @@
         // Update stats
         const cities = entries.filter(([, v]) => v.jurisdictionType === 'city').length;
         const counties = entries.filter(([, v]) => v.jurisdictionType === 'county').length;
+        const isds = entries.filter(([, v]) => v.jurisdictionType === 'isd').length;
+        const colleges = entries.filter(([, v]) => v.jurisdictionType === 'college').length;
         const states = entries.filter(([, v]) => v.jurisdictionType === 'state').length;
         cityCount.textContent = cities;
         countyCount.textContent = counties;
+        isdCount.textContent = isds;
+        collegeCount.textContent = colleges;
         stateCount.textContent = states;
         totalCount.textContent = entries.length;
     }
@@ -715,10 +727,30 @@
 
     // ── Form Helpers ────────────────────────────────────────────────────────
 
+    function updateCollegeFieldsVisibility() {
+        const isCollege = jurisdictionType.value === 'college';
+        collegeFieldsGroup.classList.toggle('hidden', !isCollege);
+        campusLat.required = isCollege;
+        campusLng.required = isCollege;
+        radiusMiles.required = isCollege;
+
+        const HINTS = {
+            city: 'For city/county: use proper name. For state: leave as "Texas"',
+            county: 'For city/county: use proper name. For state: leave as "Texas"',
+            state: 'For city/county: use proper name. For state: leave as "Texas"',
+            isd: 'Use the district\'s proper name, e.g. "Austin ISD" or just "Austin" \u2014 be consistent, since this must match the Census boundary name.',
+            college: 'Use the college/university\'s common name, e.g. "University of Texas at Austin".'
+        };
+        jurisdictionNameHint.textContent = HINTS[jurisdictionType.value] || HINTS.city;
+    }
+
+    jurisdictionType.addEventListener('change', updateCollegeFieldsVisibility);
+
     function clearForm() {
         form.reset();
         editingKey = null;
         saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Agency';
+        updateCollegeFieldsVisibility();
     }
 
     function populateForm(key) {
@@ -734,6 +766,10 @@
         address.value = agency.address;
         website.value = agency.website;
         onlineReporting.value = agency.onlineReporting || '';
+        campusLat.value = agency.campusLat || '';
+        campusLng.value = agency.campusLng || '';
+        radiusMiles.value = agency.radiusMiles || '';
+        updateCollegeFieldsVisibility();
 
         saveBtn.innerHTML = '<i class="fas fa-save"></i> Update Agency';
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -743,6 +779,13 @@
 
     form.addEventListener('submit', (e) => {
         e.preventDefault();
+
+        if (jurisdictionType.value === 'college') {
+            if (!campusLat.value.trim() || !campusLng.value.trim() || !radiusMiles.value.trim()) {
+                alert('Campus latitude, longitude, and radius are required for College/University Police so the app can auto-detect nearby searches.');
+                return;
+            }
+        }
 
         const key = `${jurisdictionType.value}:${jurisdictionName.value.trim()}`;
         const data = {
@@ -754,6 +797,12 @@
             website: website.value.trim(),
             onlineReporting: onlineReporting.value.trim()
         };
+
+        if (jurisdictionType.value === 'college') {
+            data.campusLat = campusLat.value.trim();
+            data.campusLng = campusLng.value.trim();
+            data.radiusMiles = radiusMiles.value.trim();
+        }
 
         const db = loadDB();
         db.agencies[key] = data;
@@ -1326,5 +1375,6 @@
     renderDefault();
     renderLocalCorrections();
     loadGithubCorrections();
+    updateCollegeFieldsVisibility();
 
 })();
