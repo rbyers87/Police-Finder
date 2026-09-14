@@ -5,6 +5,14 @@
 
     // ── DOM References ──────────────────────────────────────────────────────
     const $ = (sel) => document.querySelector(sel);
+
+    function escapeAttr(str) {
+        return String(str == null ? '' : str)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
     const btnLocation = $('#getCurrentLocation');
     const btnSearch = $('#searchAddress');
     const inputSearch = $('#addressSearch');
@@ -20,6 +28,8 @@
     const mapSection = $('#mapSection');
     const txBeacon = $('#txBeacon');
     const txBeaconGlow = $('#txBeaconGlow');
+    const defaultStateSection = $('#defaultStateSection');
+    const defaultStateResults = $('#defaultStateResults');
 
     // ── Constants ───────────────────────────────────────────────────────────
     const TEXAS_BOUNDS = {
@@ -93,22 +103,22 @@
     };
 
     // ── Contact Database ────────────────────────────────────────────────────
-    const DB_KEY = 'txle_agencies';
 
     async function loadAgencyDB() {
+        // The published agency-data.json file (updated via the admin page's
+        // "Publish to GitHub" button) is the single source of truth for
+        // every visitor. Deliberately no localStorage fallback here —
+        // admin edits should only take effect once they're actually
+        // published, not just for the browser that made them.
         try {
             const response = await fetch('./agency-data.json', { cache: 'no-store' });
             if (response.ok) return await response.json();
+            console.warn(`agency-data.json fetch returned ${response.status}`);
         } catch (err) {
-            console.warn('Shared agency data unavailable; using local cache:', err);
+            console.warn('Shared agency data unavailable:', err);
         }
 
-        try {
-            const raw = localStorage.getItem(DB_KEY);
-            return raw ? JSON.parse(raw) : { agencies: {}, defaultAgency: null };
-        } catch {
-            return { agencies: {}, defaultAgency: null };
-        }
+        return { agencies: {}, defaultAgency: null };
     }
 
     const agencyDBPromise = loadAgencyDB();
@@ -575,8 +585,75 @@
                     </div>
                 </div>
                 ${contactHTML}
+                <button type="button" class="btn-link btn-suggest-correction"
+                    data-agency-name="${escapeAttr(agency.name)}"
+                    data-jurisdiction-key="${escapeAttr(`${agency.jurisdictionType}:${agency.jurisdictionName}`)}"
+                    data-phone="${escapeAttr(isRealPhone ? phone : '')}"
+                    data-address="${escapeAttr(address || '')}"
+                    data-website="${escapeAttr(isRealUrl ? website : '')}"
+                    data-online-reporting="${escapeAttr(onlineReporting || '')}">
+                    <i class="fas fa-flag"></i> Suggest a correction
+                </button>
             </div>`;
     }
+
+    function renderDefaultAgencyCard(contact, badgeLabel) {
+        if (!contact) {
+            return `
+                <div class="no-results">
+                    <i class="fas fa-question-circle"></i>
+                    <p>No default agency has been configured yet.</p>
+                </div>`;
+        }
+        return `
+            <div class="jurisdiction-card">
+                <div class="jurisdiction-header">
+                    <div class="jurisdiction-icon default-icon">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="jurisdiction-info">
+                        <h3>${contact.agencyName || 'Texas Department of Public Safety'}</h3>
+                        <p class="jurisdiction-type">State Police <span class="badge badge-default">${badgeLabel}</span></p>
+                    </div>
+                </div>
+                <div class="contact-info">
+                    ${contact.phone ? `
+                    <div class="contact-item">
+                        <i class="fas fa-phone"></i>
+                        <span>${contact.phone}</span>
+                    </div>` : ''}
+                    ${contact.address ? `
+                    <div class="contact-item">
+                        <i class="fas fa-location-dot"></i>
+                        <span>${contact.address}</span>
+                    </div>` : ''}
+                    ${contact.website ? `
+                    <div class="contact-item">
+                        <i class="fas fa-globe"></i>
+                        <a href="${contact.website}" target="_blank" rel="noopener">${contact.website}</a>
+                    </div>` : ''}
+                </div>
+                <div class="contact-actions">
+                    ${contact.phone ? `<a href="tel:${contact.phone.replace(/[^0-9+]/g, '')}" class="btn btn-call"><i class="fas fa-phone"></i> Call Non-Emergency</a>` : ''}
+                    ${contact.website ? `<a href="${contact.website}" target="_blank" rel="noopener" class="btn btn-website"><i class="fas fa-globe"></i> Visit Website</a>` : ''}
+                </div>
+                <button type="button" class="btn-link btn-suggest-correction"
+                    data-agency-name="${escapeAttr(contact.agencyName || 'Texas Department of Public Safety')}"
+                    data-jurisdiction-key="default"
+                    data-phone="${escapeAttr(contact.phone || '')}"
+                    data-address="${escapeAttr(contact.address || '')}"
+                    data-website="${escapeAttr(contact.website || '')}"
+                    data-online-reporting="">
+                    <i class="fas fa-flag"></i> Suggest a correction
+                </button>
+            </div>`;
+    }
+
+    async function showDefaultStateAgency() {
+        const contact = await getDefaultAgency();
+        defaultStateResults.innerHTML = renderDefaultAgencyCard(contact, 'Default Jurisdiction');
+    }
+    showDefaultStateAgency();
 
     function renderJurisdictionResults(jurisdiction) {
         let html = '';
@@ -603,39 +680,7 @@
 
         // Default agency (only shown when no primary match from GIS)
         if (!jurisdiction.primaryContact && !jurisdiction.backupContact && jurisdiction.defaultContact) {
-            html += `
-                <div class="jurisdiction-card">
-                    <div class="jurisdiction-header">
-                        <div class="jurisdiction-icon default-icon">
-                            <i class="fas fa-star"></i>
-                        </div>
-                        <div class="jurisdiction-info">
-                            <h3>${jurisdiction.defaultContact.agencyName || 'Texas Department of Public Safety'}</h3>
-                            <p class="jurisdiction-type">State Police <span class="badge badge-default">Default Jurisdiction</span></p>
-                        </div>
-                    </div>
-                    <div class="contact-info">
-                        ${jurisdiction.defaultContact.phone ? `
-                        <div class="contact-item">
-                            <i class="fas fa-phone"></i>
-                            <span>${jurisdiction.defaultContact.phone}</span>
-                        </div>` : ''}
-                        ${jurisdiction.defaultContact.address ? `
-                        <div class="contact-item">
-                            <i class="fas fa-location-dot"></i>
-                            <span>${jurisdiction.defaultContact.address}</span>
-                        </div>` : ''}
-                        ${jurisdiction.defaultContact.website ? `
-                        <div class="contact-item">
-                            <i class="fas fa-globe"></i>
-                            <a href="${jurisdiction.defaultContact.website}" target="_blank" rel="noopener">${jurisdiction.defaultContact.website}</a>
-                        </div>` : ''}
-                    </div>
-                    <div class="contact-actions">
-                        ${jurisdiction.defaultContact.phone ? `<a href="tel:${jurisdiction.defaultContact.phone.replace(/[^0-9+]/g, '')}" class="btn btn-call"><i class="fas fa-phone"></i> Call Non-Emergency</a>` : ''}
-                        ${jurisdiction.defaultContact.website ? `<a href="${jurisdiction.defaultContact.website}" target="_blank" rel="noopener" class="btn btn-website"><i class="fas fa-globe"></i> Visit Website</a>` : ''}
-                    </div>
-                </div>`;
+            html += renderDefaultAgencyCard(jurisdiction.defaultContact, 'Default Jurisdiction');
         }
 
         // Context info
@@ -680,6 +725,7 @@
         jurisdictionSection.classList.add('hidden');
         locationDisplay.classList.add('hidden');
         mapSection.classList.add('hidden');
+        defaultStateSection.classList.add('hidden');
 
         try {
             // Validate Texas bounds
@@ -779,6 +825,179 @@
     inputSearch.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             btnSearch.click();
+        }
+    });
+
+    // ── Suggest a Correction ───────────────────────────────────────────────
+    //
+    // Same no-backend pattern as the CaseLaw-LE reference project: a
+    // submission becomes a real GitHub Issue (label "correction") only when
+    // this browser has an active admin session (i.e. someone signed in via
+    // admin.html in this same browser); otherwise it's saved to this
+    // browser's localStorage, and only becomes visible to the admin if they
+    // happen to open admin.html on that same device. Public visitors on
+    // their own devices will, in the vast majority of cases, produce local
+    // submissions the admin never automatically sees cross-device — there's
+    // no backend here to bridge that gap.
+    const GITHUB_OWNER = 'rbyers87';
+    const GITHUB_REPO = 'Police-Finder';
+    const CORRECTIONS_LABEL = 'correction';
+    const LOCAL_CORRECTIONS_KEY = 'txle_agency_corrections';
+    const GITHUB_TOKEN_SESSION_KEY = 'txle_admin_gh_token'; // shared with admin.js
+
+    const FIELD_LABELS = {
+        phone: 'Phone number',
+        address: 'Address',
+        website: 'Website',
+        onlineReporting: 'Online reporting URL',
+        agencyName: 'Agency name'
+    };
+
+    const correctionModal = $('#correctionModal');
+    const correctionAgencyName = $('#correctionAgencyName');
+    const correctionField = $('#correctionField');
+    const correctionCurrentValue = $('#correctionCurrentValue');
+    const correctionValue = $('#correctionValue');
+    const correctionNote = $('#correctionNote');
+    const correctionSubmittedBy = $('#correctionSubmittedBy');
+    const correctionStatus = $('#correctionStatus');
+    const submitCorrectionBtn = $('#submitCorrectionBtn');
+    const cancelCorrectionBtn = $('#cancelCorrectionBtn');
+
+    let correctionContext = null; // { agencyName, jurisdictionKey, values: {phone, address, website, onlineReporting} }
+
+    function updateCorrectionCurrentValue() {
+        const field = correctionField.value;
+        const value = correctionContext ? correctionContext.values[field] : '';
+        correctionCurrentValue.textContent = value || '(none on file)';
+        correctionValue.value = '';
+    }
+
+    function openCorrectionModal(trigger) {
+        correctionContext = {
+            agencyName: trigger.dataset.agencyName || '',
+            jurisdictionKey: trigger.dataset.jurisdictionKey || '',
+            values: {
+                phone: trigger.dataset.phone || '',
+                address: trigger.dataset.address || '',
+                website: trigger.dataset.website || '',
+                onlineReporting: trigger.dataset.onlineReporting || '',
+                agencyName: trigger.dataset.agencyName || ''
+            }
+        };
+        correctionAgencyName.textContent = correctionContext.agencyName;
+        correctionField.value = 'phone';
+        correctionNote.value = '';
+        correctionSubmittedBy.value = '';
+        correctionStatus.textContent = '';
+        correctionStatus.className = 'correction-status';
+        updateCorrectionCurrentValue();
+        correctionModal.classList.remove('hidden');
+        correctionValue.focus();
+    }
+
+    function closeCorrectionModal() {
+        correctionModal.classList.add('hidden');
+        correctionContext = null;
+    }
+
+    // Event delegation: correction buttons are inside dynamically-rendered
+    // card HTML, so listen on the containers they're rendered into.
+    [jurisdictionResults, defaultStateResults].forEach((container) => {
+        container.addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn-suggest-correction');
+            if (btn) openCorrectionModal(btn);
+        });
+    });
+
+    correctionField.addEventListener('change', updateCorrectionCurrentValue);
+    cancelCorrectionBtn.addEventListener('click', closeCorrectionModal);
+    correctionModal.querySelector('.modal-close').addEventListener('click', closeCorrectionModal);
+    correctionModal.addEventListener('click', (e) => {
+        if (e.target === correctionModal) closeCorrectionModal();
+    });
+
+    function saveLocalCorrection(item) {
+        let items = [];
+        try {
+            items = JSON.parse(localStorage.getItem(LOCAL_CORRECTIONS_KEY) || '[]');
+        } catch { /* start fresh */ }
+        items.push(item);
+        localStorage.setItem(LOCAL_CORRECTIONS_KEY, JSON.stringify(items));
+    }
+
+    async function createGithubCorrectionIssue(item, token) {
+        const body = [
+            `**Agency:** ${item.agencyName}`,
+            `**Jurisdiction Key:** ${item.jurisdictionKey}`,
+            `**Field:** ${item.field}`,
+            `**Current Value:** ${item.currentValue}`,
+            `**Suggested Value:** ${item.suggestedValue}`,
+            `**Note:** ${item.note}`,
+            `**Submitted By:** ${item.submittedBy}`
+        ].join('\n');
+
+        const response = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues`, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/vnd.github+json',
+                Authorization: `Bearer ${token}`,
+                'X-GitHub-Api-Version': '2022-11-28',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                title: `Correction: ${item.agencyName} — ${FIELD_LABELS[item.field] || item.field}`,
+                body,
+                labels: [CORRECTIONS_LABEL]
+            })
+        });
+        if (!response.ok) throw new Error(`GitHub issue creation failed (${response.status})`);
+    }
+
+    submitCorrectionBtn.addEventListener('click', async () => {
+        if (!correctionContext) return;
+        const value = correctionValue.value.trim();
+        if (!value) {
+            correctionStatus.textContent = 'Please enter the corrected value.';
+            correctionStatus.className = 'correction-status error';
+            return;
+        }
+
+        const item = {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            timestamp: new Date().toISOString(),
+            agencyName: correctionContext.agencyName,
+            jurisdictionKey: correctionContext.jurisdictionKey,
+            field: correctionField.value,
+            currentValue: correctionContext.values[correctionField.value] || '',
+            suggestedValue: value,
+            note: correctionNote.value.trim(),
+            submittedBy: correctionSubmittedBy.value.trim()
+        };
+
+        submitCorrectionBtn.disabled = true;
+        correctionStatus.textContent = 'Submitting...';
+        correctionStatus.className = 'correction-status';
+
+        const token = sessionStorage.getItem(GITHUB_TOKEN_SESSION_KEY);
+        try {
+            if (token) {
+                await createGithubCorrectionIssue(item, token);
+            } else {
+                saveLocalCorrection(item);
+            }
+            correctionStatus.textContent = 'Thanks! Your suggestion has been submitted for review.';
+            correctionStatus.className = 'correction-status success';
+            setTimeout(closeCorrectionModal, 1500);
+        } catch (err) {
+            // Fall back to local save if the GitHub call fails for any reason
+            // (e.g. an expired token) so the submission isn't lost.
+            saveLocalCorrection(item);
+            correctionStatus.textContent = 'Thanks! Your suggestion has been submitted for review.';
+            correctionStatus.className = 'correction-status success';
+            setTimeout(closeCorrectionModal, 1500);
+        } finally {
+            submitCorrectionBtn.disabled = false;
         }
     });
 
