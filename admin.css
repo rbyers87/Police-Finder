@@ -564,6 +564,141 @@ body {
     color: #dc3545;
 }
 
+/* ── GitHub Sign-in ───────────────────────────────────────────────────────── */
+
+.signin-section .description {
+    color: #6c757d;
+    margin-bottom: 1.25rem;
+    font-size: 0.9rem;
+}
+
+.signin-form {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.signin-form input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-family: 'Courier New', monospace;
+}
+
+.signin-form input:focus {
+    outline: none;
+    border-color: #004080;
+}
+
+.signedin-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: #d1e7dd;
+    border-radius: 8px;
+    color: #0f5132;
+    font-weight: 600;
+}
+
+.signedin-status i {
+    margin-right: 0.4rem;
+}
+
+/* ── Correction Submissions ──────────────────────────────────────────────── */
+
+.corrections-section .description {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 1.25rem;
+}
+
+.corrections-subheading {
+    font-size: 1rem;
+    color: #004080;
+    margin: 1.5rem 0 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.corrections-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.correction-item {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    padding: 1.25rem;
+}
+
+.correction-item .correction-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.correction-item .correction-agency {
+    font-weight: 700;
+    color: #004080;
+}
+
+.correction-item .correction-field-badge {
+    display: inline-block;
+    padding: 0.15rem 0.6rem;
+    border-radius: 12px;
+    background: #e8f4fd;
+    color: #004080;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.correction-item .correction-values {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.correction-item .correction-values .old-value {
+    color: #dc3545;
+    text-decoration: line-through;
+}
+
+.correction-item .correction-values .new-value {
+    color: #198754;
+    font-weight: 600;
+}
+
+.correction-item .correction-note {
+    font-size: 0.9rem;
+    color: #495057;
+    font-style: italic;
+    margin-bottom: 0.5rem;
+}
+
+.correction-item .correction-submitted-by {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-bottom: 0.75rem;
+}
+
+.correction-item .correction-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.correction-item .correction-actions .btn {
+    padding: 0.5rem 0.9rem;
+    font-size: 0.85rem;
+}
+
 /* ── PIN Overlay ──────────────────────────────────────────────────────────── */
 
 .pin-overlay {
