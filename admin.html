@@ -80,6 +80,8 @@
                             <option value="">Select type</option>
                             <option value="city">City Police Department</option>
                             <option value="county">County Sheriff's Office</option>
+                            <option value="isd">ISD Police Department</option>
+                            <option value="college">College/University Police</option>
                             <option value="state">State Police</option>
                         </select>
                     </div>
@@ -89,7 +91,7 @@
                             <i class="fas fa-map-marker-alt"></i> Jurisdiction Name
                         </label>
                         <input type="text" id="jurisdictionName" required placeholder="e.g., Austin, Travis, Texas">
-                        <small>For city/county: use proper name. For state: leave as "Texas"</small>
+                        <small id="jurisdictionNameHint">For city/county: use proper name. For state: leave as "Texas"</small>
                     </div>
 
                     <div class="form-group full-width">
@@ -97,6 +99,30 @@
                             <i class="fas fa-building-shield"></i> Agency Name
                         </label>
                         <input type="text" id="agencyName" required placeholder="e.g., Austin Police Department">
+                    </div>
+
+                    <div id="collegeFieldsGroup" class="form-group full-width hidden">
+                        <label><i class="fas fa-location-crosshairs"></i> Campus Location (for automatic detection)</label>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="campusLat">Campus Latitude</label>
+                                <input type="number" id="campusLat" step="any" placeholder="30.2849">
+                            </div>
+                            <div class="form-group">
+                                <label for="campusLng">Campus Longitude</label>
+                                <input type="number" id="campusLng" step="any" placeholder="-97.7341">
+                            </div>
+                            <div class="form-group">
+                                <label for="radiusMiles">Radius (miles)</label>
+                                <input type="number" id="radiusMiles" step="any" min="0.1" placeholder="1.0">
+                            </div>
+                        </div>
+                        <small>
+                            A search within this radius of the campus center will automatically show this
+                            department. Colleges don't have a public campus-boundary map like cities/counties do,
+                            so this is a proximity circle, not an exact property line — find coordinates by
+                            right-clicking the campus on Google Maps.
+                        </small>
                     </div>
 
                     <div class="form-group">
@@ -213,6 +239,16 @@
                     <i class="fas fa-flag"></i>
                     <span id="countyCount">0</span>
                     <small>Counties</small>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-graduation-cap"></i>
+                    <span id="isdCount">0</span>
+                    <small>ISDs</small>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-graduation-cap"></i>
+                    <span id="collegeCount">0</span>
+                    <small>Colleges</small>
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-star"></i>
