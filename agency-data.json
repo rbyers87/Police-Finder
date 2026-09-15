@@ -1,12 +1,12 @@
 {
   "agencies": {
     "county:Jefferson": {
-      "jurisdictionName": "Jefferson",
       "jurisdictionType": "county",
+      "jurisdictionName": "Jefferson",
       "agencyName": "Jefferson County Sheriff's Office",
       "phone": "(409) 835-8411",
       "address": "1001 Pearl St, Beaumont, TX 77701",
-      "website": "https://www.co.jefferson.tx.us/sheriff",
+      "website": "https://www.sheriff.jeffersoncountytx.gov/",
       "onlineReporting": ""
     },
     "county:Harris": {
@@ -550,8 +550,8 @@
       "onlineReporting": ""
     },
     "city:Beaumont": {
-      "jurisdictionName": "Beaumont",
       "jurisdictionType": "city",
+      "jurisdictionName": "Beaumont",
       "agencyName": "Beaumont Police Department",
       "phone": "(409) 832-1234",
       "address": "255 College St, Beaumont, TX 77701",
