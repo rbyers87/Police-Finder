@@ -117,11 +117,14 @@
                                 <input type="number" id="radiusMiles" step="any" min="0.1" placeholder="1.0">
                             </div>
                         </div>
+                        <button type="button" id="lookupCampusBtn" class="btn btn-secondary">
+                            <i class="fas fa-magnifying-glass-location"></i> Look Up Coordinates
+                        </button>
+                        <p id="lookupCampusStatus" class="text-muted"></p>
                         <small>
-                            A search within this radius of the campus center will automatically show this
-                            department. Colleges don't have a public campus-boundary map like cities/counties do,
-                            so this is a proximity circle, not an exact property line — find coordinates by
-                            right-clicking the campus on Google Maps.
+                            Looks up the Jurisdiction Name above via OpenStreetMap. Confirm the result looks right
+                            (search is name-based and can occasionally match the wrong place) — or right-click the
+                            campus on Google Maps to enter coordinates yourself.
                         </small>
                     </div>
 
@@ -174,6 +177,35 @@
                     </button>
                 </div>
             </form>
+        </section>
+
+        <!-- Bulk Import Colleges -->
+        <section class="list-section bulk-import-section">
+            <div class="section-header">
+                <h2><i class="fas fa-graduation-cap"></i> Bulk Import Colleges</h2>
+                <button id="searchCollegesBtn" class="btn btn-primary">
+                    <i class="fas fa-magnifying-glass"></i> Search OpenStreetMap for TX Colleges
+                </button>
+            </div>
+            <p class="description">
+                Queries OpenStreetMap (free, no account needed) for every place in Texas tagged as a university
+                or college, so you don't have to look each one up individually. This is crowd-sourced map data,
+                not an official registry — review the list before importing, and expect to fill in phone/website
+                afterward via the normal edit flow, since OpenStreetMap doesn't have police-department contact info.
+            </p>
+            <div class="form-group" style="max-width: 200px;">
+                <label for="bulkDefaultRadius">Default radius (miles)</label>
+                <input type="number" id="bulkDefaultRadius" step="any" min="0.1" value="0.5">
+            </div>
+            <p id="bulkImportStatus" class="text-muted"></p>
+            <div id="bulkImportList" class="bulk-import-list"></div>
+            <div id="bulkImportActions" class="bulk-import-actions hidden">
+                <button id="bulkImportSelectAllBtn" class="btn btn-secondary">Select All</button>
+                <button id="bulkImportSelectNoneBtn" class="btn btn-secondary">Select None</button>
+                <button id="bulkImportAddBtn" class="btn btn-success">
+                    <i class="fas fa-download"></i> Add Selected
+                </button>
+            </div>
         </section>
 
         <!-- Correction Submissions -->
