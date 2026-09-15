@@ -2,7 +2,7 @@
 
 // Bump this on every deploy that touches sw.js's own caching logic.
 // (Changing CACHE_NAME forces old caches to be purged on activate.)
-const CACHE_NAME = 'txle-locator-v5';
+const CACHE_NAME = 'txle-locator-v6';
 
 // Paths are relative to this service worker's own URL (the repo/app root),
 // so they work on GitHub Pages subpath hosting (e.g. /Police-Finder/).
@@ -60,7 +60,11 @@ self.addEventListener('activate', (event) => {
 const API_HOSTS = [
     'services.arcgis.com',
     'geocoding.geo.census.gov',
-    'nominatim.openstreetmap.org'
+    'tigerweb.geo.census.gov',
+    'nominatim.openstreetmap.org',
+    'overpass-api.de',
+    'maps.dot.state.tx.us',
+    'api.github.com'
 ];
 
 // CDN resources that can use stale-while-revalidate
