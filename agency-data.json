@@ -244,13 +244,13 @@
       "onlineReporting": ""
     },
     "city:Port Arthur": {
-      "jurisdictionName": "Port Arthur",
       "jurisdictionType": "city",
+      "jurisdictionName": "Port Arthur",
       "agencyName": "Port Arthur Police Department",
       "phone": "(409) 983-8600",
       "address": "645 4th St, Port Arthur, TX 77640",
       "website": "https://www.portarthurtx.gov/394/Police-Department",
-      "onlineReporting": ""
+      "onlineReporting": "https://secure.coplogic.com/dors/startreport/300007546"
     },
     "city:Port Neches": {
       "jurisdictionName": "Port Neches",
