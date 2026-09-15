@@ -2,7 +2,7 @@
 
 // Bump this on every deploy that touches sw.js's own caching logic.
 // (Changing CACHE_NAME forces old caches to be purged on activate.)
-const CACHE_NAME = 'txle-locator-v7';
+const CACHE_NAME = 'txle-locator-v8';
 
 // Paths are relative to this service worker's own URL (the repo/app root),
 // so they work on GitHub Pages subpath hosting (e.g. /Police-Finder/).
@@ -96,6 +96,16 @@ self.addEventListener('fetch', (event) => {
 
     // Skip non-GET requests
     if (event.request.method !== 'GET') return;
+
+    // Ad network requests: never intercept. AdSense's loader script makes
+    // its own dynamic requests across several Google ad-serving domains
+    // (bidding, tracking, creative fetches) beyond just the initial script
+    // tag — none of that should be cached or routed through our strategies,
+    // it should behave exactly as it would with no service worker at all.
+    const AD_HOSTS = ['googlesyndication.com', 'doubleclick.net', 'googleadservices.com', 'google-analytics.com', 'googletagmanager.com'];
+    if (AD_HOSTS.some((host) => url.hostname.endsWith(host))) {
+        return; // not calling respondWith() lets the browser handle it natively
+    }
 
     // Network-first for GIS/geocoding APIs — no stale-cache fallback,
     // a clear error is better than a wrong jurisdiction.

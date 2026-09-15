@@ -417,6 +417,11 @@ body {
     margin-top: 3rem;
 }
 
+.footer-ad {
+    max-width: 728px;
+    margin: 0 auto 1.5rem;
+}
+
 .app-footer p {
     margin: 0.25rem 0;
 }
