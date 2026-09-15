@@ -720,32 +720,8 @@ body {
     fill: url(#tx-node-glow);
 }
 
-/* Decorative icons: State Patrol shield + generic badge stay hand-drawn;
-   City Police / Sheriff / patrol car are photo badges (see .tx-photo-badge) */
-.tx-icon-fill {
-    fill: rgba(255, 255, 255, 0.14);
-    stroke: rgba(255, 255, 255, 0.5);
-    stroke-width: 1.4;
-    stroke-linejoin: round;
-}
-
-.tx-icon-shield {
-    fill: rgba(255, 255, 255, 0.10);
-}
-
-.tx-icon-accent {
-    fill: #e8c468;
-    stroke: none;
-}
-
-.tx-icon-label {
-    fill: rgba(255, 255, 255, 0.85);
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-}
-
+/* All five map icons (City Police, Sheriff, State Patrol, ISD Police,
+   patrol car) are photo badges now -- no hand-drawn icon styling needed */
 .tx-photo-badge {
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
 }
