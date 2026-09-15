@@ -2,7 +2,7 @@
 
 // Bump this on every deploy that touches sw.js's own caching logic.
 // (Changing CACHE_NAME forces old caches to be purged on activate.)
-const CACHE_NAME = 'txle-locator-v6';
+const CACHE_NAME = 'txle-locator-v7';
 
 // Paths are relative to this service worker's own URL (the repo/app root),
 // so they work on GitHub Pages subpath hosting (e.g. /Police-Finder/).
@@ -28,7 +28,11 @@ const STATIC_ASSETS = [
     './assets/apple-touch-icon.png',
     './assets/android-chrome-192x192.png',
     './assets/android-chrome-512x512.png',
-    './assets/Wallpaper.jpg'
+    './assets/icon-city-police.png',
+    './assets/icon-sheriff.png',
+    './assets/icon-state-patrol.png',
+    './assets/icon-isd-police.png',
+    './assets/icon-patrol-car.png'
 ];
 
 const APP_SHELL = [...CORE_ASSETS, ...STATIC_ASSETS];
