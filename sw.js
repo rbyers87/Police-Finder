@@ -63,6 +63,8 @@ const API_HOSTS = [
     'tigerweb.geo.census.gov',
     'nominatim.openstreetmap.org',
     'overpass-api.de',
+    'overpass.kumi.systems',
+    'overpass.private.coffee',
     'maps.dot.state.tx.us',
     'api.github.com'
 ];
