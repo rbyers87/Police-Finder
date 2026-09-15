@@ -116,6 +116,18 @@
     const campusLat = document.getElementById('campusLat');
     const campusLng = document.getElementById('campusLng');
     const radiusMiles = document.getElementById('radiusMiles');
+    const lookupCampusBtn = document.getElementById('lookupCampusBtn');
+    const lookupCampusStatus = document.getElementById('lookupCampusStatus');
+
+    // Bulk import
+    const searchCollegesBtn = document.getElementById('searchCollegesBtn');
+    const bulkDefaultRadius = document.getElementById('bulkDefaultRadius');
+    const bulkImportStatus = document.getElementById('bulkImportStatus');
+    const bulkImportList = document.getElementById('bulkImportList');
+    const bulkImportActions = document.getElementById('bulkImportActions');
+    const bulkImportSelectAllBtn = document.getElementById('bulkImportSelectAllBtn');
+    const bulkImportSelectNoneBtn = document.getElementById('bulkImportSelectNoneBtn');
+    const bulkImportAddBtn = document.getElementById('bulkImportAddBtn');
     const saveBtn = document.getElementById('saveBtn');
     const clearBtn = document.getElementById('clearBtn');
     const agencyList = document.getElementById('agencyList');
@@ -774,6 +786,212 @@
         saveBtn.innerHTML = '<i class="fas fa-save"></i> Update Agency';
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+
+    // ── Campus Coordinate Lookup (single) ──────────────────────────────────
+    // Free, keyless geocoding via OpenStreetMap's Nominatim — good fit for
+    // an occasional, admin-triggered manual lookup like this one.
+
+    lookupCampusBtn.addEventListener('click', async () => {
+        const name = jurisdictionName.value.trim();
+        if (!name) {
+            lookupCampusStatus.textContent = 'Enter the Jurisdiction Name above first.';
+            lookupCampusStatus.className = 'correction-status error';
+            return;
+        }
+
+        lookupCampusBtn.disabled = true;
+        lookupCampusStatus.textContent = 'Looking up...';
+        lookupCampusStatus.className = 'text-muted';
+
+        try {
+            const query = `${name}, Texas, USA`;
+            const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
+            const resp = await fetch(url, { headers: { Accept: 'application/json' } });
+            if (!resp.ok) throw new Error(`Lookup failed (${resp.status})`);
+            const results = await resp.json();
+
+            if (!results.length) {
+                lookupCampusStatus.textContent = 'No results found. Try adjusting the name, or enter coordinates manually.';
+                lookupCampusStatus.className = 'correction-status error';
+                return;
+            }
+
+            campusLat.value = parseFloat(results[0].lat).toFixed(6);
+            campusLng.value = parseFloat(results[0].lon).toFixed(6);
+            lookupCampusStatus.textContent = `Found: ${results[0].display_name} — confirm this looks right.`;
+            lookupCampusStatus.className = 'correction-status success';
+        } catch (error) {
+            lookupCampusStatus.textContent = `Lookup failed: ${error.message}`;
+            lookupCampusStatus.className = 'correction-status error';
+        } finally {
+            lookupCampusBtn.disabled = false;
+        }
+    });
+
+    // ── Bulk Import Colleges ───────────────────────────────────────────────
+    // Live query against OpenStreetMap's Overpass API (free, keyless,
+    // public instance) for every university/college tagged in Texas.
+    // Crowd-sourced data, so it's a starting list to review, not an
+    // authoritative registry -- nothing is added until the admin picks
+    // which rows to import.
+
+    let bulkImportResults = [];
+
+    // overpass-api.de's main instance recently tightened its CORS policy and
+    // now rejects browser POST requests outright (406, no CORS headers on
+    // the response — which surfaces to fetch() as an opaque "Failed to
+    // fetch", not a readable status code). GET avoids the CORS preflight
+    // entirely since it's a "simple" cross-origin request, so we use that
+    // instead, with fallback across community-run mirrors in case any one
+    // instance is down, overloaded, or rate-limiting us.
+    const OVERPASS_ENDPOINTS = [
+        'https://overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter',
+        'https://overpass.private.coffee/api/interpreter'
+    ];
+
+    async function searchColleges() {
+        searchCollegesBtn.disabled = true;
+        bulkImportStatus.textContent = 'Searching OpenStreetMap (this can take up to a minute)...';
+        bulkImportStatus.className = 'text-muted';
+        bulkImportList.innerHTML = '';
+        bulkImportActions.classList.add('hidden');
+
+        const overpassQuery = `
+            [out:json][timeout:60];
+            area["ISO3166-2"="US-TX"]["admin_level"="4"]->.tx;
+            (
+              node["amenity"="university"](area.tx);
+              node["amenity"="college"](area.tx);
+              way["amenity"="university"](area.tx);
+              way["amenity"="college"](area.tx);
+            );
+            out center;
+        `;
+
+        let data = null;
+        let lastError = null;
+
+        for (const endpoint of OVERPASS_ENDPOINTS) {
+            try {
+                const url = `${endpoint}?data=${encodeURIComponent(overpassQuery)}`;
+                const resp = await fetch(url);
+                if (!resp.ok) {
+                    lastError = new Error(`${endpoint} returned ${resp.status}`);
+                    continue;
+                }
+                data = await resp.json();
+                break; // success — stop trying further mirrors
+            } catch (error) {
+                lastError = error;
+            }
+        }
+
+        if (!data) {
+            bulkImportStatus.textContent = `Search failed: ${lastError ? lastError.message : 'no response'}. All OpenStreetMap servers were unavailable — try again in a bit.`;
+            bulkImportStatus.className = 'correction-status error';
+            searchCollegesBtn.disabled = false;
+            return;
+        }
+
+        try {
+            const seen = new Set();
+            const db = loadDB();
+            bulkImportResults = [];
+
+            for (const el of data.elements || []) {
+                const name = el.tags && el.tags.name;
+                if (!name || seen.has(name)) continue;
+                const lat = el.lat ?? (el.center && el.center.lat);
+                const lng = el.lon ?? (el.center && el.center.lon);
+                if (!isFinite(lat) || !isFinite(lng)) continue;
+                seen.add(name);
+                bulkImportResults.push({
+                    name,
+                    lat: Number(lat).toFixed(6),
+                    lng: Number(lng).toFixed(6),
+                    alreadyAdded: !!db.agencies[`college:${name}`]
+                });
+            }
+
+            bulkImportResults.sort((a, b) => a.name.localeCompare(b.name));
+            renderBulkImportList();
+            bulkImportStatus.textContent = `Found ${bulkImportResults.length} candidates. Review and select which to import.`;
+            bulkImportStatus.className = 'correction-status success';
+            bulkImportActions.classList.toggle('hidden', bulkImportResults.length === 0);
+        } catch (error) {
+            bulkImportStatus.textContent = `Couldn't process results: ${error.message}`;
+            bulkImportStatus.className = 'correction-status error';
+        } finally {
+            searchCollegesBtn.disabled = false;
+        }
+    }
+
+    function renderBulkImportList() {
+        const defaultRadius = bulkDefaultRadius.value || '0.5';
+        bulkImportList.innerHTML = bulkImportResults.map((item, i) => `
+            <div class="bulk-import-item ${item.alreadyAdded ? 'already-added' : ''}" data-index="${i}">
+                <input type="checkbox" ${item.alreadyAdded ? 'disabled' : 'checked'}>
+                <div class="bulk-item-info">
+                    <div class="bulk-item-name">${escapeHtml(item.name)}${item.alreadyAdded ? ' (already added)' : ''}</div>
+                    <div class="bulk-item-coords">${item.lat}, ${item.lng}</div>
+                </div>
+                <input type="number" class="bulk-item-radius" step="any" min="0.1"
+                       value="${defaultRadius}" ${item.alreadyAdded ? 'disabled' : ''} title="Radius (miles)">
+            </div>
+        `).join('');
+    }
+
+    searchCollegesBtn.addEventListener('click', searchColleges);
+
+    bulkImportSelectAllBtn.addEventListener('click', () => {
+        bulkImportList.querySelectorAll('input[type="checkbox"]:not(:disabled)').forEach((cb) => { cb.checked = true; });
+    });
+
+    bulkImportSelectNoneBtn.addEventListener('click', () => {
+        bulkImportList.querySelectorAll('input[type="checkbox"]').forEach((cb) => { cb.checked = false; });
+    });
+
+    bulkImportAddBtn.addEventListener('click', () => {
+        const rows = bulkImportList.querySelectorAll('.bulk-import-item');
+        const db = loadDB();
+        let added = 0;
+
+        rows.forEach((row) => {
+            const idx = parseInt(row.dataset.index, 10);
+            const item = bulkImportResults[idx];
+            const checkbox = row.querySelector('input[type="checkbox"]');
+            if (!checkbox.checked || item.alreadyAdded) return;
+
+            const radiusInput = row.querySelector('.bulk-item-radius');
+            const key = `college:${item.name}`;
+            db.agencies[key] = {
+                jurisdictionType: 'college',
+                jurisdictionName: item.name,
+                agencyName: `${item.name} Police Department`,
+                phone: '',
+                address: '',
+                website: '',
+                onlineReporting: '',
+                campusLat: item.lat,
+                campusLng: item.lng,
+                radiusMiles: radiusInput.value || '0.5'
+            };
+            item.alreadyAdded = true;
+            added++;
+        });
+
+        if (added > 0) {
+            saveDB(db);
+            renderList(searchInput.value.toLowerCase().trim());
+            renderBulkImportList();
+            bulkImportStatus.textContent = `Added ${added} college${added === 1 ? '' : 's'}. Edit each one in the list above to fill in phone/website contact info.`;
+            bulkImportStatus.className = 'correction-status success';
+        } else {
+            bulkImportStatus.textContent = 'Nothing selected to add.';
+            bulkImportStatus.className = 'correction-status error';
+        }
+    });
 
     // ── Event Handlers ──────────────────────────────────────────────────────
 
