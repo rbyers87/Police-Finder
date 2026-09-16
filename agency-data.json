@@ -1,8 +1,8 @@
 {
   "agencies": {
     "county:Jefferson": {
-      "jurisdictionName": "Jefferson",
       "jurisdictionType": "county",
+      "jurisdictionName": "Jefferson",
       "agencyName": "Jefferson County Sheriff's Office",
       "phone": "(409) 835-8411",
       "address": "1001 Pearl St, Beaumont, TX 77701",
@@ -244,8 +244,8 @@
       "onlineReporting": ""
     },
     "city:Port Arthur": {
-      "jurisdictionName": "Port Arthur",
       "jurisdictionType": "city",
+      "jurisdictionName": "Port Arthur",
       "agencyName": "Port Arthur Police Department",
       "phone": "(409) 983-8600",
       "address": "645 4th St, Port Arthur, TX 77640",
@@ -550,12 +550,12 @@
       "onlineReporting": ""
     },
     "city:Beaumont": {
-      "jurisdictionName": "Beaumont",
       "jurisdictionType": "city",
+      "jurisdictionName": "Beaumont",
       "agencyName": "Beaumont Police Department",
       "phone": "(409) 832-1234",
       "address": "255 College St, Beaumont, TX 77701",
-      "website": "https://www.beaumonttexas.gov/departments/police",
+      "website": "https://police.beaumonttexas.gov/",
       "onlineReporting": ""
     },
     "city:Galveston": {
