@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#004080">
     <meta name="description" content="Find your local Texas law enforcement agency based on your GPS location">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -17,14 +18,15 @@
     <title>Texas Police Finder</title>
     <link rel="stylesheet" href="styles.css">
     <script>
-        /* Apply saved theme before paint to prevent flash. Also tint the
-           iOS "navbar" (theme-color meta) so dark mode doesn't leave a light
-           band behind the toolbar/status bar until you scroll. */
+        /* The app's dark/light styling follows the OS appearance via CSS
+           @media (prefers-color-scheme: dark) — no toggle, no data-theme.
+           Before paint we only sync the theme-color meta tag so the Safari
+           toolbar/status-bar region matches immediately (dark = black band).
+           Without this, dark mode can flash a light band behind the chrome. */
         (function() {
-            const saved = localStorage.getItem('theme');
-            if (saved) document.documentElement.setAttribute('data-theme', saved);
+            const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
             const meta = document.querySelector('meta[name="theme-color"]');
-            if (meta) meta.content = saved === 'dark' ? '#1a1a2e' : '#004080';
+            if (meta) meta.content = dark ? '#1a1a2e' : '#004080';
         })();
     </script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -34,11 +36,6 @@
 
 <body>
     <div id="app">
-
-        <!-- Theme Toggle -->
-        <button id="themeToggle" class="theme-toggle" title="Toggle light/dark mode" aria-label="Toggle light/dark mode">
-            <i class="fas fa-moon" id="themeIcon"></i>
-        </button>
 
         <!-- Emergency Disclaimer   (Top) -->
         <div class="emergency-banner">

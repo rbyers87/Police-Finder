@@ -11,7 +11,7 @@ Designed for **non-emergency** use only. For emergencies, dial **9-1-1**.
 - **Address search** — free-text address, zip, or city (Texas only)
 - **Real jurisdiction data** — live GIS boundary queries against ArcGIS and Census TIGER endpoints (not mock/preset data)
 - **Full contact cards** — non-emergency phone (tap-to-call), address, website, and online reporting links when available
-- **Light & dark themes** — manual toggle plus automatic follow of the OS preference
+- **Light & dark themes** — follows the OS appearance automatically (`prefers-color-scheme`), no manual toggle
 - **Admin panel** — manage agency contacts and publish changes straight to the repo
 
 ## Features
@@ -55,9 +55,9 @@ After a lookup, a stylized inline-SVG map of Texas displays a pulsing beacon at 
 
 ### Themes
 
-- Light/dark toggle button (persisted in `localStorage`)
-- Follows the OS `prefers-color-scheme` when no saved preference exists
-- CSS custom properties drive both themes; a pre-paint script prevents a theme flash
+- **Follows the OS automatically** — dark mode is driven entirely by CSS `@media (prefers-color-scheme: dark)`, so the app matches the system Appearance in Safari *and* when installed as a standalone PWA. There is no in-app toggle.
+- CSS custom properties drive both themes, so the whole UI swaps together
+- `color-scheme: dark` is declared in the dark theme, so the iOS canvas (the layer behind the page and beside the status bar / home indicator) paints dark instead of white
 - The iOS "navbar" (Safari toolbar/status-bar tint) is kept in sync via the `theme-color` meta tag
 - When installed as an iOS PWA, `viewport-fit=cover` plus `env(safe-area-inset-*)` padding keeps content in the safe areas and fills the status-bar / home-indicator edges with the themed background — no white bands at the very top or bottom, even in dark mode
 

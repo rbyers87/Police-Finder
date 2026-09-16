@@ -3,68 +3,27 @@
 (function () {
     'use strict';
 
-    // ── Theme Toggle ─────────────────────────────────────────────────────────
-    const THEME_KEY = 'theme';
-    const root = document.documentElement;
-    const themeToggleBtn = document.getElementById('themeToggle');
-    const themeIcon = document.getElementById('themeIcon');
-
-    // theme-color tints the iOS Safari "navbar" (toolbar + status bar region).
-    // Keep it in sync with the theme so dark mode gives a black band instead of
-    // a white one that only hides once you scroll and the chrome collapses.
+    // ── System Theme (follows the OS, no manual toggle) ────────────────────
+    // All dark/light styling is driven by CSS @media (prefers-color-scheme).
+    // The theme-color meta tag tints the iOS Safari "navbar" (toolbar + status
+    // bar region), which CSS can't reach, so we sync it to the OS appearance
+    // here and keep it in sync when the user changes the OS setting.
     const THEME_COLOR_LIGHT = '#004080';
     const THEME_COLOR_DARK = '#1a1a2e';
     const themeColorMeta = document.querySelector('meta[name="theme-color"]');
 
-    function applyThemeColor(theme) {
+    function applyThemeColor(dark) {
         if (!themeColorMeta) return;
-        themeColorMeta.content = theme === 'dark' ? THEME_COLOR_DARK : THEME_COLOR_LIGHT;
+        themeColorMeta.content = dark ? THEME_COLOR_DARK : THEME_COLOR_LIGHT;
     }
 
-    function setTheme(theme) {
-        root.setAttribute('data-theme', theme);
-        localStorage.setItem(THEME_KEY, theme);
-        updateThemeIcon(theme);
-        applyThemeColor(theme);
-    }
-
-    function updateThemeIcon(theme) {
-        if (theme === 'dark') {
-            themeIcon.className = 'fas fa-sun';
-        } else {
-            themeIcon.className = 'fas fa-moon';
-        }
-    }
-
-    // Initialize theme on load
-    (function initTheme() {
-        const saved = localStorage.getItem(THEME_KEY);
-        if (saved) {
-            root.setAttribute('data-theme', saved);
-            updateThemeIcon(saved);
-            applyThemeColor(saved);
-        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            root.setAttribute('data-theme', 'dark');
-            updateThemeIcon('dark');
-            applyThemeColor('dark');
-        }
-    })();
-
-    if (themeToggleBtn) {
-        themeToggleBtn.addEventListener('click', function () {
-            const current = root.getAttribute('data-theme');
-            setTheme(current === 'dark' ? 'light' : 'dark');
-        });
-    }
+    // Initialize on load
+    applyThemeColor(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
     // Listen for OS theme changes
     if (window.matchMedia) {
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
-            if (!localStorage.getItem(THEME_KEY)) {
-                root.setAttribute('data-theme', e.matches ? 'dark' : 'light');
-                updateThemeIcon(e.matches ? 'dark' : 'light');
-                applyThemeColor(e.matches ? 'dark' : 'light');
-            }
+            applyThemeColor(e.matches);
         });
     }
 

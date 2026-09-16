@@ -21,7 +21,6 @@
     --bg-footer: #343a40;
     --bg-modal: white;
     --bg-modal-overlay: rgba(0, 0, 0, 0.5);
-    --bg-toggle: rgba(255, 255, 255, 0.9);
 
     /* Borders */
     --border-card: 1px solid rgba(255, 255, 255, 0.2);
@@ -41,7 +40,6 @@
     --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.1);
     --shadow-hero-card: 0 8px 32px rgba(0, 0, 0, 0.25);
     --shadow-jurisdiction-card: 0 4px 12px rgba(0, 0, 0, 0.05);
-    --shadow-toggle: 0 4px 12px rgba(0, 0, 0, 0.15);
 
     /* SVG / Map */
     --map-outline-fill: #004080;
@@ -53,58 +51,66 @@
     --modal-close-hover-color: #333;
 }
 
-/* ── Dark Theme Overrides ───────────────────────────────────────────────── */
-[data-theme="dark"] {
-    --color-text: #e4e6e8;
-    --color-text-muted: #9ca3af;
-    --color-text-secondary: #9ca3af;
-    --color-text-light: #777d86;
-    --color-text-heading: #6db3f2;
-    --color-text-label: #d1d5db;
+/* ── Dark Theme Overrides (follows the OS setting, no manual toggle) ───── */
+/*
+    The app is themed entirely through @media (prefers-color-scheme: dark),
+    so it follows the system appearance automatically — in Safari and in an
+    installed standalone PWA. Declaring color-scheme: dark also lets the
+    WebKit canvas (the layer behind the page and beside the status bar / home
+    indicator) paint dark instead of white.
+*/
+@media (prefers-color-scheme: dark) {
+    :root {
+        color-scheme: dark;
+        --color-text: #e4e6e8;
+        --color-text-muted: #9ca3af;
+        --color-text-secondary: #9ca3af;
+        --color-text-light: #777d86;
+        --color-text-heading: #6db3f2;
+        --color-text-label: #d1d5db;
 
-    --bg-body: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    --bg-card: #1e293b;
-    --bg-input: #334155;
-    --bg-input-inset: transparent;
-    --bg-contact-item: #283548;
-    --bg-no-contact: #283548;
-    --bg-location-display: linear-gradient(135deg, #1e3a5f 0%, #1a2f4a 100%);
-    --bg-jurisdiction-context: #1e3a5f;
-    --bg-error: linear-gradient(135deg, #4a1a1a 0%, #3f1f1f 100%);
-    --bg-footer: #111827;
-    --bg-modal: #1e293b;
-    --bg-modal-overlay: rgba(0, 0, 0, 0.7);
-    --bg-toggle: rgba(30, 41, 59, 0.9);
+        --bg-body: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        --bg-card: #1e293b;
+        --bg-input: #334155;
+        --bg-input-inset: transparent;
+        --bg-contact-item: #283548;
+        --bg-no-contact: #283548;
+        --bg-location-display: linear-gradient(135deg, #1e3a5f 0%, #1a2f4a 100%);
+        --bg-jurisdiction-context: #1e3a5f;
+        --bg-error: linear-gradient(135deg, #4a1a1a 0%, #3f1f1f 100%);
+        --bg-footer: #111827;
+        --bg-modal: #1e293b;
+        --bg-modal-overlay: rgba(0, 0, 0, 0.7);
 
-    --border-card: 1px solid rgba(255, 255, 255, 0.08);
-    --border-card-hover: #6db3f2;
-    --border-input: 2px solid #475569;
-    --border-input-focus: #6db3f2;
-    --border-jurisdiction-card: 2px solid #334155;
-    --border-no-contact: 1px dashed #475569;
-    --border-form: 2px solid #475569;
-    --border-form-focus: #6db3f2;
-    --border-modal-header: 1px solid #334155;
-    --border-modal-footer: 1px solid #334155;
-    --border-jurisdiction-context: 1px solid #2a4a6b;
+        --border-card: 1px solid rgba(255, 255, 255, 0.08);
+        --border-card-hover: #6db3f2;
+        --border-input: 2px solid #475569;
+        --border-input-focus: #6db3f2;
+        --border-jurisdiction-card: 2px solid #334155;
+        --border-no-contact: 1px dashed #475569;
+        --border-form: 2px solid #475569;
+        --border-form-focus: #6db3f2;
+        --border-modal-header: 1px solid #334155;
+        --border-modal-footer: 1px solid #334155;
+        --border-jurisdiction-context: 1px solid #2a4a6b;
 
-    --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
-    --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.5);
-    --shadow-hero-card: 0 8px 32px rgba(0, 0, 0, 0.5);
-    --shadow-jurisdiction-card: 0 4px 12px rgba(0, 0, 0, 0.3);
-    --shadow-toggle: 0 4px 12px rgba(0, 0, 0, 0.4);
+        --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
+        --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.5);
+        --shadow-hero-card: 0 8px 32px rgba(0, 0, 0, 0.5);
+        --shadow-jurisdiction-card: 0 4px 12px rgba(0, 0, 0, 0.3);
 
-    --map-outline-fill: #2563eb;
-    --map-outline-stroke: #1e293b;
+        --map-outline-fill: #2563eb;
+        --map-outline-stroke: #1e293b;
 
-    --footer-text: #6b7280;
-    --modal-close-hover-bg: #334155;
-    --modal-close-hover-color: #e4e6e8;
+        --footer-text: #6b7280;
+        --modal-close-hover-bg: #334155;
+        --modal-close-hover-color: #e4e6e8;
 
-    /* Override inline styles that used hardcoded colors */
-    --color-contact-icon: #6db3f2;
-    --btn-primary-gradient: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-    --btn-primary-gradient-hover: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+        /* Override inline styles that used hardcoded colors */
+        --color-contact-icon: #6db3f2;
+        --btn-primary-gradient: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        --btn-primary-gradient-hover: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+    }
 }
 
 /* ── Theme Transition ───────────────────────────────────────────────────── */
@@ -120,49 +126,6 @@ body,
 .no-contact,
 .error-display {
     transition: background 0.35s ease, color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
-}
-
-/* ── Theme Toggle Button ────────────────────────────────────────────────── */
-.theme-toggle {
-    position: fixed;
-    top: max(1.25rem, calc(env(safe-area-inset-top) + 1.25rem));
-    right: 1.25rem;
-    z-index: 900;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    border: none;
-    background: var(--bg-toggle);
-    color: #f59e0b;
-    font-size: 1.25rem;
-    cursor: pointer;
-    box-shadow: var(--shadow-toggle);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.35s ease, color 0.35s ease;
-}
-
-.theme-toggle:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-}
-
-.theme-toggle:active {
-    transform: scale(0.95);
-}
-
-[data-theme="dark"] .theme-toggle {
-    color: #facc15;
-}
-
-/* ── Icon Swap Animation ────────────────────────────────────────────────── */
-#themeIcon {
-    transition: transform 0.4s ease;
-}
-
-.theme-toggle:hover #themeIcon {
-    transform: rotate(20deg);
 }
 
 /* ── Reset and Base Styles ──────────────────────────────────────────────── */
@@ -226,10 +189,6 @@ body {
     max-width: 480px;
     width: 100%;
     box-shadow: var(--shadow-hero-card);
-}
-
-[data-theme="dark"] .hero-card {
-    background: rgba(30, 41, 59, 0.97);
 }
 
 .hero-card-dots {
@@ -606,11 +565,6 @@ body {
     display: flex;
     align-items: center;
     gap: 1rem;
-}
-
-[data-theme="dark"] .error-display {
-    border: 1px solid #722f37;
-    color: #f0c6c9;
 }
 
 .error-display i {
@@ -1134,85 +1088,94 @@ body {
     color: #dc3545;
 }
 
-/* ── Remaining Dark Theme Overrides ──────────────────────────────────────── */
-[data-theme="dark"] .hero-location-btn {
-    color: #6db3f2;
-}
-[data-theme="dark"] .hero-location-btn:hover {
-    color: #9ccbf7;
-}
-[data-theme="dark"] .hero-search-btn {
-    background: #1d4ed8;
-}
-[data-theme="dark"] .hero-search-btn:hover {
-    background: #1e40af;
-}
-[data-theme="dark"] .hero-search-input-wrap:focus-within {
-    border-color: #6db3f2;
-}
-[data-theme="dark"] .hero-search-icon {
-    color: #6b7280;
-}
-[data-theme="dark"] .hero-search-input-wrap input::placeholder {
-    color: #6b7280;
-}
-[data-theme="dark"] .location-display {
-    border-color: #2563eb;
-}
-[data-theme="dark"] .contact-item i {
-    color: #6db3f2;
-}
-[data-theme="dark"] .jurisdiction-icon {
-    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-}
-[data-theme="dark"] .jurisdiction-icon.has-image {
-    background: none;
-}
-[data-theme="dark"] .jurisdiction-icon.default-icon {
-    background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
-    color: #1a1a2e;
-}
-[data-theme="dark"] .jurisdiction-icon.default-icon.has-image {
-    background: none;
-}
-[data-theme="dark"] .search-input:focus {
-    border-color: #6db3f2;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-}
-[data-theme="dark"] .form-group input:focus,
-[data-theme="dark"] .form-group select:focus,
-[data-theme="dark"] .form-group textarea:focus {
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-}
-[data-theme="dark"] .btn-primary {
-    background: var(--btn-primary-gradient);
-}
-[data-theme="dark"] .btn-primary:hover {
-    background: var(--btn-primary-gradient-hover);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-}
-[data-theme="dark"] .tx-outline {
-    fill: var(--map-outline-fill);
-    stroke: var(--map-outline-stroke);
-}
-[data-theme="dark"] .tx-bg-rect {
-    fill: url(#tx-bg-gradient);  /* restore dark navy gradient in dark mode */
-}
-[data-theme="dark"] .tx-network-glow {
-    fill: url(#tx-node-glow);
-}
-[data-theme="dark"] .tx-network-dot {
-    fill: #3b82f6;
-}
-[data-theme="dark"] .emergency-banner {
-    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.2);
-}
-[data-theme="dark"] .modal-header h3,
-[data-theme="dark"] .jurisdiction-section h2,
-[data-theme="dark"] .map-section h2 {
-    color: var(--color-text-heading);
-}
-[data-theme="dark"] .badge-default {
-    background: #ca8a04;
-    color: #1a1a2e;
+/* ── Remaining Dark Theme Overrides (follows the OS setting) ────────────── */
+@media (prefers-color-scheme: dark) {
+    .hero-card {
+        background: rgba(30, 41, 59, 0.97);
+    }
+    .hero-location-btn {
+        color: #6db3f2;
+    }
+    .hero-location-btn:hover {
+        color: #9ccbf7;
+    }
+    .hero-search-btn {
+        background: #1d4ed8;
+    }
+    .hero-search-btn:hover {
+        background: #1e40af;
+    }
+    .hero-search-input-wrap:focus-within {
+        border-color: #6db3f2;
+    }
+    .hero-search-icon {
+        color: #6b7280;
+    }
+    .hero-search-input-wrap input::placeholder {
+        color: #6b7280;
+    }
+    .location-display {
+        border-color: #2563eb;
+    }
+    .contact-item i {
+        color: #6db3f2;
+    }
+    .jurisdiction-icon {
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    }
+    .jurisdiction-icon.has-image {
+        background: none;
+    }
+    .jurisdiction-icon.default-icon {
+        background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+        color: #1a1a2e;
+    }
+    .jurisdiction-icon.default-icon.has-image {
+        background: none;
+    }
+    .search-input:focus {
+        border-color: #6db3f2;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    .btn-primary {
+        background: var(--btn-primary-gradient);
+    }
+    .btn-primary:hover {
+        background: var(--btn-primary-gradient-hover);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    }
+    .tx-outline {
+        fill: var(--map-outline-fill);
+        stroke: var(--map-outline-stroke);
+    }
+    .tx-bg-rect {
+        fill: url(#tx-bg-gradient);  /* restore dark navy gradient in dark mode */
+    }
+    .tx-network-glow {
+        fill: url(#tx-node-glow);
+    }
+    .tx-network-dot {
+        fill: #3b82f6;
+    }
+    .emergency-banner {
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.2);
+    }
+    .error-display {
+        border: 1px solid #722f37;
+        color: #f0c6c9;
+    }
+    .modal-header h3,
+    .jurisdiction-section h2,
+    .map-section h2 {
+        color: var(--color-text-heading);
+    }
+    .badge-default {
+        background: #ca8a04;
+        color: #1a1a2e;
+    }
 }
