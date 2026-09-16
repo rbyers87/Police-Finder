@@ -705,16 +705,14 @@ body {
 
 /* State outline */
 .tx-outline {
-    fill: rgba(200, 210, 230, 0.14);
-    stroke: #ffffff;
+    fill: #004080;          /* solid blue interior */
+    stroke: #ffffff;        /* white outline KEPT */
     stroke-width: 2.4;
     stroke-linejoin: round;
 }
-
-/* Decorative "network" overlay, matching the original wallpaper's theme */
 .tx-network-line {
-    stroke: rgba(180, 220, 255, 0.35);
-    stroke-width: 1;
+    stroke: none;
+    display: none;          /* light network lines GONE */
 }
 
 .tx-network-dot {
