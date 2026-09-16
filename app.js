@@ -37,6 +37,18 @@
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
     }
+
+    // Open an address in the device's maps app. iOS rejects the `geo:` URI
+    // scheme from web content ("address is invalid"), so use real https URLs:
+    // Apple Maps on Apple devices, Google Maps everywhere else.
+    function mapsUrl(address) {
+        const query = encodeURIComponent(address);
+        const ios = /iP(hone|ad|od)/.test(navigator.platform) ||
+            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPads report a desktop UA
+        return ios
+            ? `https://maps.apple.com/?q=${query}`
+            : `https://www.google.com/maps/search/?api=1&query=${query}`;
+    }
     const btnLocation = $('#getCurrentLocation');
     const btnSearch = $('#searchAddress');
     const inputSearch = $('#addressSearch');
@@ -686,8 +698,8 @@
         // Detect if website is a real URL vs a search suggestion
         const isRealUrl = website && (website.startsWith('http://') || website.startsWith('https://'));
 
-        // Maps link: opens the address in the device's default maps app.
-        const mapsHref = address ? `geo:0,0?q=${encodeURIComponent(address)}` : null;
+        // Maps link: opens the address in the device's maps app.
+        const mapsHref = address ? mapsUrl(address) : null;
 
         const iconSrcByType = {
             city: 'assets/icon-city-police.png',
@@ -721,7 +733,7 @@
                     ${address ? `
                     <div class="contact-item">
                         <i class="fas fa-location-dot"></i>
-                        <a href="${escapeAttr(mapsHref)}" aria-label="Open in maps: ${escapeAttr(address)}">${escapeAttr(address)}</a>
+                        <a href="${escapeAttr(mapsHref)}" target="_blank" rel="noopener" aria-label="Open in maps: ${escapeAttr(address)}">${escapeAttr(address)}</a>
                     </div>` : ''}
                     ${website ? `
                     <div class="contact-item">
@@ -797,7 +809,7 @@
                     ${contact.address ? `
                     <div class="contact-item">
                         <i class="fas fa-location-dot"></i>
-                        <a href="geo:0,0?q=${encodeURIComponent(contact.address)}" aria-label="Open in maps: ${escapeAttr(contact.address)}">${escapeAttr(contact.address)}</a>
+                        <a href="${escapeAttr(mapsUrl(contact.address))}" target="_blank" rel="noopener" aria-label="Open in maps: ${escapeAttr(contact.address)}">${escapeAttr(contact.address)}</a>
                     </div>` : ''}
                     ${contact.website ? `
                     <div class="contact-item">
