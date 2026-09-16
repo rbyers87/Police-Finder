@@ -5,6 +5,14 @@
 
     // ── DOM References ──────────────────────────────────────────────────────
     const $ = (sel) => document.querySelector(sel);
+
+    function escapeAttr(str) {
+        return String(str == null ? '' : str)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
     const btnLocation = $('#getCurrentLocation');
     const btnSearch = $('#searchAddress');
     const inputSearch = $('#addressSearch');
@@ -17,6 +25,11 @@
     const jurisdictionResults = $('#jurisdictionResults');
     const errorDisplay = $('#errorDisplay');
     const errorMessage = $('#errorMessage');
+    const mapSection = $('#mapSection');
+    const txBeacon = $('#txBeacon');
+    const txBeaconGlow = $('#txBeaconGlow');
+    const defaultStateSection = $('#defaultStateSection');
+    const defaultStateResults = $('#defaultStateResults');
 
     // ── Constants ───────────────────────────────────────────────────────────
     const TEXAS_BOUNDS = {
@@ -24,8 +37,40 @@
         minLng: -106.6, maxLng: -93.5
     };
 
+    // ── Texas Map Beacon ────────────────────────────────────────────────────
+    // The map in #mapSection is an inline SVG traced from real Texas border
+    // coordinates (US Census TIGER-derived boundary), not a hand-illustrated
+    // approximation. That means placing a beacon is a straightforward,
+    // exact equirectangular projection — no calibration or guesswork
+    // needed — as long as these constants match how texas-map.svg's own
+    // path was generated (see PROJECTION below). If the SVG is ever
+    // regenerated from source data, these four numbers must match it.
+    const PROJECTION = {
+        minLng: -106.643603,
+        maxLat: 36.501861,
+        cosMeanLat: 0.8554121210292265, // cos(mean latitude), corrects x-scale
+        scale: 55,  // px per degree of latitude, matching texas-map.svg
+        pad: 16     // px margin baked into texas-map.svg's viewBox
+    };
+
+    function geoToTexasSvgPosition(lat, lng) {
+        const cx = (lng - PROJECTION.minLng) * PROJECTION.cosMeanLat * PROJECTION.scale + PROJECTION.pad;
+        const cy = (PROJECTION.maxLat - lat) * PROJECTION.scale + PROJECTION.pad;
+        return { cx, cy };
+    }
+
+    function showTexasBeacon(lat, lng) {
+        const { cx, cy } = geoToTexasSvgPosition(lat, lng);
+        txBeacon.setAttribute('cx', cx);
+        txBeacon.setAttribute('cy', cy);
+        txBeaconGlow.setAttribute('cx', cx);
+        txBeaconGlow.setAttribute('cy', cy);
+        mapSection.classList.remove('hidden');
+    }
+
     const ARCGIS_ORG = 'https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services';
     const CENSUS_GEOCODE = 'https://geocoding.geo.census.gov/geocoder/geographies/coordinates';
+    const CENSUS_ONELINE_GEOCODE = 'https://geocoding.geo.census.gov/geocoder/locations/onelineaddress';
     const NOMINATIM_REVERSE = 'https://nominatim.openstreetmap.org/reverse';
     const NOMINATIM_SEARCH = 'https://nominatim.openstreetmap.org/search';
 
@@ -42,9 +87,18 @@
         'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer/0/query'
     ];
 
+    // Census Unified School District boundaries -- real polygon data, same
+    // family of service as the city/county lookups above (not a Texas-only
+    // dataset, but spatial intersection with a TX point naturally scopes it).
+    const ISD_ENDPOINTS = [
+        'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/School/MapServer/0/query',
+        'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer/14/query'
+    ];
+
     // Field names to try when parsing GIS responses (varies by endpoint)
     const CITY_NAME_FIELDS = ['CITY_NM', 'NAME', 'CITY_NAME', 'NAMELSAD', 'NAME10', 'FULLNAME'];
     const COUNTY_NAME_FIELDS = ['CNTY_NM', 'NAME', 'COUNTY_NAME', 'COUNTYNAME', 'NAMELSAD', 'COUNTY_FIPS'];
+    const ISD_NAME_FIELDS = ['BASENAME', 'NAME'];
 
     // Area codes by county for fallback contact generation
     const AREA_CODE_MAP = {
@@ -59,22 +113,22 @@
     };
 
     // ── Contact Database ────────────────────────────────────────────────────
-    const DB_KEY = 'txle_agencies';
 
     async function loadAgencyDB() {
+        // The published agency-data.json file (updated via the admin page's
+        // "Publish to GitHub" button) is the single source of truth for
+        // every visitor. Deliberately no localStorage fallback here —
+        // admin edits should only take effect once they're actually
+        // published, not just for the browser that made them.
         try {
             const response = await fetch('./agency-data.json', { cache: 'no-store' });
             if (response.ok) return await response.json();
+            console.warn(`agency-data.json fetch returned ${response.status}`);
         } catch (err) {
-            console.warn('Shared agency data unavailable; using local cache:', err);
+            console.warn('Shared agency data unavailable:', err);
         }
 
-        try {
-            const raw = localStorage.getItem(DB_KEY);
-            return raw ? JSON.parse(raw) : { agencies: {}, defaultAgency: null };
-        } catch {
-            return { agencies: {}, defaultAgency: null };
-        }
+        return { agencies: {}, defaultAgency: null };
     }
 
     const agencyDBPromise = loadAgencyDB();
@@ -239,6 +293,84 @@
     }
 
     /**
+     * Query the Census Unified School District boundary containing the
+     * given point. This is real polygon data (same category as city/county
+     * above) — so, unlike colleges, ISD matching is exact, not proximity-based.
+     * Returns { name } or null.
+     */
+    async function queryISD(lat, lng) {
+        for (const endpoint of ISD_ENDPOINTS) {
+            try {
+                const params = new URLSearchParams({
+                    where: '1=1',
+                    geometry: `${lng},${lat}`,
+                    geometryType: 'esriGeometryPoint',
+                    inSR: '4326',
+                    spatialRel: 'esriSpatialRelIntersects',
+                    outFields: '*',
+                    returnGeometry: 'false',
+                    f: 'json'
+                });
+
+                const resp = await fetch(`${endpoint}?${params}`);
+                if (!resp.ok) continue;
+
+                const data = await resp.json();
+                if (data.error) continue;
+
+                if (data.features && data.features.length > 0) {
+                    const attrs = data.features[0].attributes;
+                    let name = extractFieldName(attrs, ISD_NAME_FIELDS);
+                    if (name) {
+                        name = name.replace(/ ISD$/i, '').replace(/ Independent School District$/i, '').trim();
+                        return { name };
+                    }
+                }
+            } catch (err) {
+                console.warn(`ISD endpoint failed: ${endpoint}`, err);
+            }
+        }
+        return null;
+    }
+
+    function haversineMiles(lat1, lng1, lat2, lng2) {
+        const toRad = (d) => (d * Math.PI) / 180;
+        const R = 3958.8; // Earth radius in miles
+        const dLat = toRad(lat2 - lat1);
+        const dLng = toRad(lng2 - lng1);
+        const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    /**
+     * Colleges have no standard, publicly queryable campus-boundary dataset
+     * the way cities/counties/ISDs do — so this matches by proximity to an
+     * admin-entered campus center point instead of a real polygon. Returns
+     * the closest campus within its configured radius, or null.
+     */
+    async function queryCollege(lat, lng) {
+        const db = await agencyDBPromise;
+        let closest = null;
+        let closestDist = Infinity;
+
+        for (const agency of Object.values(db.agencies || {})) {
+            if (agency.jurisdictionType !== 'college') continue;
+            const cLat = parseFloat(agency.campusLat);
+            const cLng = parseFloat(agency.campusLng);
+            const radius = parseFloat(agency.radiusMiles);
+            if (!isFinite(cLat) || !isFinite(cLng) || !isFinite(radius)) continue;
+
+            const dist = haversineMiles(lat, lng, cLat, cLng);
+            if (dist <= radius && dist < closestDist) {
+                closest = { name: agency.jurisdictionName };
+                closestDist = dist;
+            }
+        }
+        return closest;
+    }
+
+    /**
      * Get the area code for a county (used for fallback contact generation).
      */
     function getAreaCode(countyName) {
@@ -274,10 +406,11 @@
         const nominatimResult = await tryNominatimSearch(searchAddr);
         if (nominatimResult) return nominatimResult;
 
-        // Fallback to Esri's World Geocoder — better coverage for rural/newer
-        // addresses (and some agency addresses) missing from OpenStreetMap.
-        const esriResult = await tryEsriSearch(searchAddr);
-        if (esriResult) return esriResult;
+        // Fallback to the Census Bureau's forward geocoder — better coverage
+        // for rural/newer addresses (and some agency addresses) missing
+        // from OpenStreetMap.
+        const censusResult = await tryCensusForwardSearch(searchAddr);
+        if (censusResult) return censusResult;
 
         return null;
     }
@@ -312,32 +445,35 @@
         return null;
     }
 
-    async function tryEsriSearch(searchAddr) {
-        // Esri returns coordinates as {x: lng, y: lat} in WGS84.
+    async function tryCensusForwardSearch(searchAddr) {
+        // Census's forward-geocoding sibling to CENSUS_GEOCODE (reverse) above.
+        // Real, keyless, documented endpoint -- this replaces a previous
+        // "Esri fallback" that referenced an undefined ESRI_GEOCODE constant
+        // and threw a ReferenceError on every single call, silently killing
+        // the fallback path whenever Nominatim didn't return a result.
         const params = new URLSearchParams({
-            f: 'json',
-            singleLine: searchAddr,
-            maxLocations: 1,
-            outFields: 'Match_addr'
+            address: searchAddr,
+            benchmark: 'Public_AR_Current',
+            format: 'json'
         });
 
         try {
-            const resp = await fetch(`${ESRI_GEOCODE}?${params}`);
+            const resp = await fetch(`${CENSUS_ONELINE_GEOCODE}?${params}`);
             if (!resp.ok) {
-                console.warn('Esri geocode search failed with status', resp.status);
+                console.warn('Census forward geocode failed with status', resp.status);
                 return null;
             }
             const data = await resp.json();
-            const candidate = data.candidates && data.candidates[0];
-            if (candidate && candidate.location) {
+            const match = data.result && data.result.addressMatches && data.result.addressMatches[0];
+            if (match && match.coordinates) {
                 return {
-                    lat: parseFloat(candidate.location.y),
-                    lng: parseFloat(candidate.location.x),
-                    displayName: candidate.address || (candidate.attributes && candidate.attributes.Match_addr) || searchAddr
+                    lat: parseFloat(match.coordinates.y),
+                    lng: parseFloat(match.coordinates.x),
+                    displayName: match.matchedAddress || searchAddr
                 };
             }
         } catch (err) {
-            console.warn('Esri geocode search failed:', err);
+            console.warn('Census forward geocode failed:', err);
         }
         return null;
     }
@@ -349,20 +485,28 @@
      * then resolves jurisdiction hierarchy (city > county > state).
      */
     async function resolveJurisdiction(lat, lng) {
-        // Run city and county queries in parallel
-        const [cityResult, countyResult] = await Promise.all([
+        // Run city, county, ISD, and college queries in parallel
+        const [cityResult, countyResult, isdResult, collegeResult] = await Promise.all([
             queryCity(lat, lng),
-            queryCounty(lat, lng)
+            queryCounty(lat, lng),
+            queryISD(lat, lng),
+            queryCollege(lat, lng)
         ]);
 
         // Build result object
         const jurisdiction = {
             city: cityResult,
             county: countyResult,
+            isd: isdResult,
+            college: collegeResult,
             primary: null,
             backup: null,
             primaryContact: null,
             backupContact: null,
+            // Additional, non-hierarchical matches (ISD/college police serve
+            // specific properties, not a general-purpose area the way city/
+            // county policing does, so they're shown alongside, not ranked).
+            additional: [],
             defaultContact: await getDefaultAgency()
         };
 
@@ -426,6 +570,40 @@
             }
         }
 
+        // ISD police (real boundary match — only shown when an ISD agency
+        // is actually on file, since most ISDs don't have their own PD and
+        // are served by local city/county police instead)
+        if (isdResult) {
+            const isdContact = await getAgency('isd', isdResult.name);
+            if (isdContact) {
+                jurisdiction.additional.push({
+                    agency: {
+                        name: isdContact.agencyName || `${isdResult.name} ISD Police Department`,
+                        type: 'ISD Police',
+                        jurisdictionName: isdResult.name,
+                        jurisdictionType: 'isd'
+                    },
+                    contact: isdContact
+                });
+            }
+        }
+
+        // College/university police (proximity match — see queryCollege)
+        if (collegeResult) {
+            const collegeContact = await getAgency('college', collegeResult.name);
+            if (collegeContact) {
+                jurisdiction.additional.push({
+                    agency: {
+                        name: collegeContact.agencyName || `${collegeResult.name} Police Department`,
+                        type: 'Campus Police',
+                        jurisdictionName: collegeResult.name,
+                        jurisdictionType: 'college'
+                    },
+                    contact: collegeContact
+                });
+            }
+        }
+
         // If nothing matched at all, use default (Texas DPS)
         if (!jurisdiction.primary) {
             jurisdiction.primary = {
@@ -484,10 +662,13 @@
         // Detect if website is a real URL vs a search suggestion
         const isRealUrl = website && (website.startsWith('http://') || website.startsWith('https://'));
 
-        const icon = isPrimary ? 'fa-shield-halved' : 'fa-building-shield';
-        const badge = isPrimary
-            ? '<span class="badge badge-primary">Primary Jurisdiction</span>'
-            : '<span class="badge badge-secondary">Secondary Jurisdiction</span>';
+        const iconByType = {
+            isd: 'fa-graduation-cap',
+            college: 'fa-graduation-cap'
+        };
+        const icon = iconByType[agency.jurisdictionType] || (isPrimary ? 'fa-shield-halved' : 'fa-building-shield');
+        const badgeClass = isPrimary ? 'badge-primary' : (agency.jurisdictionType === 'isd' || agency.jurisdictionType === 'college' ? 'badge-default' : 'badge-secondary');
+        const badge = `<span class="badge ${badgeClass}">${label}</span>`;
 
         let contactHTML = '';
         if (hasContact) {
@@ -541,8 +722,75 @@
                     </div>
                 </div>
                 ${contactHTML}
+                <button type="button" class="btn-link btn-suggest-correction"
+                    data-agency-name="${escapeAttr(agency.name)}"
+                    data-jurisdiction-key="${escapeAttr(`${agency.jurisdictionType}:${agency.jurisdictionName}`)}"
+                    data-phone="${escapeAttr(isRealPhone ? phone : '')}"
+                    data-address="${escapeAttr(address || '')}"
+                    data-website="${escapeAttr(isRealUrl ? website : '')}"
+                    data-online-reporting="${escapeAttr(onlineReporting || '')}">
+                    <i class="fas fa-flag"></i> Suggest a correction
+                </button>
             </div>`;
     }
+
+    function renderDefaultAgencyCard(contact, badgeLabel) {
+        if (!contact) {
+            return `
+                <div class="no-results">
+                    <i class="fas fa-question-circle"></i>
+                    <p>No default agency has been configured yet.</p>
+                </div>`;
+        }
+        return `
+            <div class="jurisdiction-card">
+                <div class="jurisdiction-header">
+                    <div class="jurisdiction-icon default-icon">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="jurisdiction-info">
+                        <h3>${contact.agencyName || 'Texas Department of Public Safety'}</h3>
+                        <p class="jurisdiction-type">State Police <span class="badge badge-default">${badgeLabel}</span></p>
+                    </div>
+                </div>
+                <div class="contact-info">
+                    ${contact.phone ? `
+                    <div class="contact-item">
+                        <i class="fas fa-phone"></i>
+                        <span>${contact.phone}</span>
+                    </div>` : ''}
+                    ${contact.address ? `
+                    <div class="contact-item">
+                        <i class="fas fa-location-dot"></i>
+                        <span>${contact.address}</span>
+                    </div>` : ''}
+                    ${contact.website ? `
+                    <div class="contact-item">
+                        <i class="fas fa-globe"></i>
+                        <a href="${contact.website}" target="_blank" rel="noopener">${contact.website}</a>
+                    </div>` : ''}
+                </div>
+                <div class="contact-actions">
+                    ${contact.phone ? `<a href="tel:${contact.phone.replace(/[^0-9+]/g, '')}" class="btn btn-call"><i class="fas fa-phone"></i> Call Non-Emergency</a>` : ''}
+                    ${contact.website ? `<a href="${contact.website}" target="_blank" rel="noopener" class="btn btn-website"><i class="fas fa-globe"></i> Visit Website</a>` : ''}
+                </div>
+                <button type="button" class="btn-link btn-suggest-correction"
+                    data-agency-name="${escapeAttr(contact.agencyName || 'Texas Department of Public Safety')}"
+                    data-jurisdiction-key="default"
+                    data-phone="${escapeAttr(contact.phone || '')}"
+                    data-address="${escapeAttr(contact.address || '')}"
+                    data-website="${escapeAttr(contact.website || '')}"
+                    data-online-reporting="">
+                    <i class="fas fa-flag"></i> Suggest a correction
+                </button>
+            </div>`;
+    }
+
+    async function showDefaultStateAgency() {
+        const contact = await getDefaultAgency();
+        defaultStateResults.innerHTML = renderDefaultAgencyCard(contact, 'Default Jurisdiction');
+    }
+    showDefaultStateAgency();
 
     function renderJurisdictionResults(jurisdiction) {
         let html = '';
@@ -552,7 +800,7 @@
             html += renderJurisdictionCard(
                 jurisdiction.primary,
                 jurisdiction.primaryContact,
-                'Primary',
+                'Primary Jurisdiction',
                 true
             );
         }
@@ -562,52 +810,34 @@
             html += renderJurisdictionCard(
                 jurisdiction.backup,
                 jurisdiction.backupContact,
-                'Secondary',
+                'Secondary Jurisdiction',
+                false
+            );
+        }
+
+        // ISD / college police — shown alongside city/county, not ranked
+        // against them (a campus or school property can have its own PD
+        // even though the surrounding area is also served by city/county).
+        for (const extra of jurisdiction.additional) {
+            html += renderJurisdictionCard(
+                extra.agency,
+                extra.contact,
+                'Also Serving This Area',
                 false
             );
         }
 
         // Default agency (only shown when no primary match from GIS)
         if (!jurisdiction.primaryContact && !jurisdiction.backupContact && jurisdiction.defaultContact) {
-            html += `
-                <div class="jurisdiction-card">
-                    <div class="jurisdiction-header">
-                        <div class="jurisdiction-icon default-icon">
-                            <i class="fas fa-star"></i>
-                        </div>
-                        <div class="jurisdiction-info">
-                            <h3>${jurisdiction.defaultContact.agencyName || 'Texas Department of Public Safety'}</h3>
-                            <p class="jurisdiction-type">State Police <span class="badge badge-default">Default Jurisdiction</span></p>
-                        </div>
-                    </div>
-                    <div class="contact-info">
-                        ${jurisdiction.defaultContact.phone ? `
-                        <div class="contact-item">
-                            <i class="fas fa-phone"></i>
-                            <span>${jurisdiction.defaultContact.phone}</span>
-                        </div>` : ''}
-                        ${jurisdiction.defaultContact.address ? `
-                        <div class="contact-item">
-                            <i class="fas fa-location-dot"></i>
-                            <span>${jurisdiction.defaultContact.address}</span>
-                        </div>` : ''}
-                        ${jurisdiction.defaultContact.website ? `
-                        <div class="contact-item">
-                            <i class="fas fa-globe"></i>
-                            <a href="${jurisdiction.defaultContact.website}" target="_blank" rel="noopener">${jurisdiction.defaultContact.website}</a>
-                        </div>` : ''}
-                    </div>
-                    <div class="contact-actions">
-                        ${jurisdiction.defaultContact.phone ? `<a href="tel:${jurisdiction.defaultContact.phone.replace(/[^0-9+]/g, '')}" class="btn btn-call"><i class="fas fa-phone"></i> Call Non-Emergency</a>` : ''}
-                        ${jurisdiction.defaultContact.website ? `<a href="${jurisdiction.defaultContact.website}" target="_blank" rel="noopener" class="btn btn-website"><i class="fas fa-globe"></i> Visit Website</a>` : ''}
-                    </div>
-                </div>`;
+            html += renderDefaultAgencyCard(jurisdiction.defaultContact, 'Default Jurisdiction');
         }
 
         // Context info
         const contextParts = [];
         if (jurisdiction.city) contextParts.push(`City: ${jurisdiction.city.name}`);
         if (jurisdiction.county) contextParts.push(`County: ${jurisdiction.county.name} County`);
+        if (jurisdiction.isd) contextParts.push(`ISD: ${jurisdiction.isd.name}`);
+        if (jurisdiction.college) contextParts.push(`Near: ${jurisdiction.college.name}`);
 
         if (contextParts.length > 0) {
             html = `
@@ -645,6 +875,8 @@
         showLoading(true);
         jurisdictionSection.classList.add('hidden');
         locationDisplay.classList.add('hidden');
+        mapSection.classList.add('hidden');
+        defaultStateSection.classList.add('hidden');
 
         try {
             // Validate Texas bounds
@@ -656,6 +888,7 @@
             // Reverse geocode for display
             const addressInfo = await reverseGeocode(lat, lng);
             showLocationInfo(lat, lng, addressInfo);
+            showTexasBeacon(lat, lng);
 
             // Resolve jurisdiction via GIS APIs
             const jurisdiction = await resolveJurisdiction(lat, lng);
@@ -743,6 +976,179 @@
     inputSearch.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             btnSearch.click();
+        }
+    });
+
+    // ── Suggest a Correction ───────────────────────────────────────────────
+    //
+    // Same no-backend pattern as the CaseLaw-LE reference project: a
+    // submission becomes a real GitHub Issue (label "correction") only when
+    // this browser has an active admin session (i.e. someone signed in via
+    // admin.html in this same browser); otherwise it's saved to this
+    // browser's localStorage, and only becomes visible to the admin if they
+    // happen to open admin.html on that same device. Public visitors on
+    // their own devices will, in the vast majority of cases, produce local
+    // submissions the admin never automatically sees cross-device — there's
+    // no backend here to bridge that gap.
+    const GITHUB_OWNER = 'rbyers87';
+    const GITHUB_REPO = 'Police-Finder';
+    const CORRECTIONS_LABEL = 'correction';
+    const LOCAL_CORRECTIONS_KEY = 'txle_agency_corrections';
+    const GITHUB_TOKEN_SESSION_KEY = 'txle_admin_gh_token'; // shared with admin.js
+
+    const FIELD_LABELS = {
+        phone: 'Phone number',
+        address: 'Address',
+        website: 'Website',
+        onlineReporting: 'Online reporting URL',
+        agencyName: 'Agency name'
+    };
+
+    const correctionModal = $('#correctionModal');
+    const correctionAgencyName = $('#correctionAgencyName');
+    const correctionField = $('#correctionField');
+    const correctionCurrentValue = $('#correctionCurrentValue');
+    const correctionValue = $('#correctionValue');
+    const correctionNote = $('#correctionNote');
+    const correctionSubmittedBy = $('#correctionSubmittedBy');
+    const correctionStatus = $('#correctionStatus');
+    const submitCorrectionBtn = $('#submitCorrectionBtn');
+    const cancelCorrectionBtn = $('#cancelCorrectionBtn');
+
+    let correctionContext = null; // { agencyName, jurisdictionKey, values: {phone, address, website, onlineReporting} }
+
+    function updateCorrectionCurrentValue() {
+        const field = correctionField.value;
+        const value = correctionContext ? correctionContext.values[field] : '';
+        correctionCurrentValue.textContent = value || '(none on file)';
+        correctionValue.value = '';
+    }
+
+    function openCorrectionModal(trigger) {
+        correctionContext = {
+            agencyName: trigger.dataset.agencyName || '',
+            jurisdictionKey: trigger.dataset.jurisdictionKey || '',
+            values: {
+                phone: trigger.dataset.phone || '',
+                address: trigger.dataset.address || '',
+                website: trigger.dataset.website || '',
+                onlineReporting: trigger.dataset.onlineReporting || '',
+                agencyName: trigger.dataset.agencyName || ''
+            }
+        };
+        correctionAgencyName.textContent = correctionContext.agencyName;
+        correctionField.value = 'phone';
+        correctionNote.value = '';
+        correctionSubmittedBy.value = '';
+        correctionStatus.textContent = '';
+        correctionStatus.className = 'correction-status';
+        updateCorrectionCurrentValue();
+        correctionModal.classList.remove('hidden');
+        correctionValue.focus();
+    }
+
+    function closeCorrectionModal() {
+        correctionModal.classList.add('hidden');
+        correctionContext = null;
+    }
+
+    // Event delegation: correction buttons are inside dynamically-rendered
+    // card HTML, so listen on the containers they're rendered into.
+    [jurisdictionResults, defaultStateResults].forEach((container) => {
+        container.addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn-suggest-correction');
+            if (btn) openCorrectionModal(btn);
+        });
+    });
+
+    correctionField.addEventListener('change', updateCorrectionCurrentValue);
+    cancelCorrectionBtn.addEventListener('click', closeCorrectionModal);
+    correctionModal.querySelector('.modal-close').addEventListener('click', closeCorrectionModal);
+    correctionModal.addEventListener('click', (e) => {
+        if (e.target === correctionModal) closeCorrectionModal();
+    });
+
+    function saveLocalCorrection(item) {
+        let items = [];
+        try {
+            items = JSON.parse(localStorage.getItem(LOCAL_CORRECTIONS_KEY) || '[]');
+        } catch { /* start fresh */ }
+        items.push(item);
+        localStorage.setItem(LOCAL_CORRECTIONS_KEY, JSON.stringify(items));
+    }
+
+    async function createGithubCorrectionIssue(item, token) {
+        const body = [
+            `**Agency:** ${item.agencyName}`,
+            `**Jurisdiction Key:** ${item.jurisdictionKey}`,
+            `**Field:** ${item.field}`,
+            `**Current Value:** ${item.currentValue}`,
+            `**Suggested Value:** ${item.suggestedValue}`,
+            `**Note:** ${item.note}`,
+            `**Submitted By:** ${item.submittedBy}`
+        ].join('\n');
+
+        const response = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues`, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/vnd.github+json',
+                Authorization: `Bearer ${token}`,
+                'X-GitHub-Api-Version': '2022-11-28',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                title: `Correction: ${item.agencyName} — ${FIELD_LABELS[item.field] || item.field}`,
+                body,
+                labels: [CORRECTIONS_LABEL]
+            })
+        });
+        if (!response.ok) throw new Error(`GitHub issue creation failed (${response.status})`);
+    }
+
+    submitCorrectionBtn.addEventListener('click', async () => {
+        if (!correctionContext) return;
+        const value = correctionValue.value.trim();
+        if (!value) {
+            correctionStatus.textContent = 'Please enter the corrected value.';
+            correctionStatus.className = 'correction-status error';
+            return;
+        }
+
+        const item = {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            timestamp: new Date().toISOString(),
+            agencyName: correctionContext.agencyName,
+            jurisdictionKey: correctionContext.jurisdictionKey,
+            field: correctionField.value,
+            currentValue: correctionContext.values[correctionField.value] || '',
+            suggestedValue: value,
+            note: correctionNote.value.trim(),
+            submittedBy: correctionSubmittedBy.value.trim()
+        };
+
+        submitCorrectionBtn.disabled = true;
+        correctionStatus.textContent = 'Submitting...';
+        correctionStatus.className = 'correction-status';
+
+        const token = sessionStorage.getItem(GITHUB_TOKEN_SESSION_KEY);
+        try {
+            if (token) {
+                await createGithubCorrectionIssue(item, token);
+            } else {
+                saveLocalCorrection(item);
+            }
+            correctionStatus.textContent = 'Thanks! Your suggestion has been submitted for review.';
+            correctionStatus.className = 'correction-status success';
+            setTimeout(closeCorrectionModal, 1500);
+        } catch (err) {
+            // Fall back to local save if the GitHub call fails for any reason
+            // (e.g. an expired token) so the submission isn't lost.
+            saveLocalCorrection(item);
+            correctionStatus.textContent = 'Thanks! Your suggestion has been submitted for review.';
+            correctionStatus.className = 'correction-status success';
+            setTimeout(closeCorrectionModal, 1500);
+        } finally {
+            submitCorrectionBtn.disabled = false;
         }
     });
 

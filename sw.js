@@ -1,18 +1,26 @@
 // Service Worker for Texas Law Enforcement Locator PWA
 
-const CACHE_NAME = 'txle-locator-v4';
+// Bump this on every deploy that touches sw.js's own caching logic.
+// (Changing CACHE_NAME forces old caches to be purged on activate.)
+const CACHE_NAME = 'txle-locator-v8';
 
 // Paths are relative to this service worker's own URL (the repo/app root),
 // so they work on GitHub Pages subpath hosting (e.g. /Police-Finder/).
-const APP_SHELL = [
+
+// App code: must always reflect the latest deploy when the user is online.
+// Cached only as a fallback for when they're offline.
+const CORE_ASSETS = [
     './',
     './index.html',
     './styles.css',
     './app.js',
     './admin.html',
     './admin.js',
-    './admin.css',
-    './agency-data.json',
+    './admin.css'
+];
+
+// Truly static, rarely-changing assets — fine to serve straight from cache.
+const STATIC_ASSETS = [
     './assets/site.webmanifest',
     './assets/favicon.ico',
     './assets/favicon-16x16.png',
@@ -20,8 +28,14 @@ const APP_SHELL = [
     './assets/apple-touch-icon.png',
     './assets/android-chrome-192x192.png',
     './assets/android-chrome-512x512.png',
-    './assets/Wallpaper.jpg'
+    './assets/icon-city-police.png',
+    './assets/icon-sheriff.png',
+    './assets/icon-state-patrol.png',
+    './assets/icon-isd-police.png',
+    './assets/icon-patrol-car.png'
 ];
+
+const APP_SHELL = [...CORE_ASSETS, ...STATIC_ASSETS];
 
 // ── Install ────────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
@@ -50,7 +64,13 @@ self.addEventListener('activate', (event) => {
 const API_HOSTS = [
     'services.arcgis.com',
     'geocoding.geo.census.gov',
-    'nominatim.openstreetmap.org'
+    'tigerweb.geo.census.gov',
+    'nominatim.openstreetmap.org',
+    'overpass-api.de',
+    'overpass.kumi.systems',
+    'overpass.private.coffee',
+    'maps.dot.state.tx.us',
+    'api.github.com'
 ];
 
 // CDN resources that can use stale-while-revalidate
@@ -60,21 +80,51 @@ const CDN_HOSTS = [
     'fonts.gstatic.com'
 ];
 
+// Recognize core app-shell requests regardless of query string, and
+// including the root path ('/', './', '/Police-Finder/', etc).
+function isCoreAsset(url) {
+    return CORE_ASSETS.some((path) => {
+        if (path === './') {
+            return url.pathname.endsWith('/');
+        }
+        return url.pathname.endsWith(path.replace('./', '/'));
+    });
+}
+
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
     // Skip non-GET requests
     if (event.request.method !== 'GET') return;
 
-    // Network-first for GIS/geocoding APIs
+    // Ad network requests: never intercept. AdSense's loader script makes
+    // its own dynamic requests across several Google ad-serving domains
+    // (bidding, tracking, creative fetches) beyond just the initial script
+    // tag — none of that should be cached or routed through our strategies,
+    // it should behave exactly as it would with no service worker at all.
+    const AD_HOSTS = ['googlesyndication.com', 'doubleclick.net', 'googleadservices.com', 'google-analytics.com', 'googletagmanager.com'];
+    if (AD_HOSTS.some((host) => url.hostname.endsWith(host))) {
+        return; // not calling respondWith() lets the browser handle it natively
+    }
+
+    // Network-first for GIS/geocoding APIs — no stale-cache fallback,
+    // a clear error is better than a wrong jurisdiction.
     if (API_HOSTS.some((host) => url.hostname.includes(host))) {
         event.respondWith(networkFirst(event.request));
         return;
     }
 
-    // Shared agency contacts must be refreshed from GitHub when online.
+    // Shared agency contacts must be refreshed from GitHub when online —
+    // same reasoning as above, no stale-cache fallback.
     if (url.pathname.endsWith('/agency-data.json')) {
         event.respondWith(networkFirst(event.request));
+        return;
+    }
+
+    // App shell code (HTML/JS/CSS): always prefer the network so deploys
+    // take effect immediately. Cache is only used when offline.
+    if (isCoreAsset(url)) {
+        event.respondWith(networkFirstWithCacheFallback(event.request));
         return;
     }
 
@@ -84,7 +134,7 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Cache-first for app shell
+    // Cache-first for genuinely static assets (icons, manifest, images)
     event.respondWith(cacheFirst(event.request));
 });
 
@@ -102,7 +152,6 @@ async function cacheFirst(request) {
         }
         return response;
     } catch {
-        // Return offline fallback for navigation requests (relative to SW location)
         if (request.mode === 'navigate') {
             return caches.match('./index.html');
         }
@@ -112,14 +161,32 @@ async function cacheFirst(request) {
 
 async function networkFirst(request) {
     try {
-        const response = await fetch(request);
-        return response;
+        return await fetch(request);
     } catch {
-        // APIs don't work offline — return clear error
+        // APIs / shared data don't work offline — return a clear error
+        // instead of silently serving stale data.
         return new Response(
-            JSON.stringify({ error: 'offline', message: 'Network unavailable. GIS queries require an internet connection.' }),
+            JSON.stringify({ error: 'offline', message: 'Network unavailable. This data requires an internet connection.' }),
             { status: 503, headers: { 'Content-Type': 'application/json' } }
         );
+    }
+}
+
+async function networkFirstWithCacheFallback(request) {
+    try {
+        const response = await fetch(request);
+        if (response.ok) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(request, response.clone());
+        }
+        return response;
+    } catch {
+        const cached = await caches.match(request);
+        if (cached) return cached;
+        if (request.mode === 'navigate') {
+            return caches.match('./index.html');
+        }
+        return new Response('Offline', { status: 503 });
     }
 }
 

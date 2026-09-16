@@ -11,6 +11,34 @@
     const GITHUB_REPO = 'Police-Finder';
     const GITHUB_BRANCH = 'main';
     const GITHUB_DATA_PATH = 'agency-data.json';
+    const CORRECTIONS_LABEL = 'correction';
+    const LOCAL_CORRECTIONS_KEY = 'txle_agency_corrections';
+    // Shared with app.js on the public site (same origin) so a submission
+    // made from a browser with an active admin session creates a real
+    // GitHub issue instead of only saving locally.
+    const GITHUB_TOKEN_SESSION_KEY = 'txle_admin_gh_token';
+
+    function getAdminToken() {
+        return sessionStorage.getItem(GITHUB_TOKEN_SESSION_KEY) || null;
+    }
+
+    function setAdminToken(token) {
+        sessionStorage.setItem(GITHUB_TOKEN_SESSION_KEY, token);
+    }
+
+    function clearAdminToken() {
+        sessionStorage.removeItem(GITHUB_TOKEN_SESSION_KEY);
+    }
+
+    function githubHeaders(extra) {
+        const token = getAdminToken();
+        return {
+            Accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...extra
+        };
+    }
 
     // ── Password Gate ────────────────────────────────────────────────────────
     const AUTH_SESSION_KEY = 'txle_admin_auth';
@@ -78,11 +106,28 @@
     const form = document.getElementById('agencyForm');
     const jurisdictionType = document.getElementById('jurisdictionType');
     const jurisdictionName = document.getElementById('jurisdictionName');
+    const jurisdictionNameHint = document.getElementById('jurisdictionNameHint');
     const agencyName = document.getElementById('agencyName');
     const phone = document.getElementById('phone');
     const address = document.getElementById('address');
     const website = document.getElementById('website');
     const onlineReporting = document.getElementById('onlineReporting');
+    const collegeFieldsGroup = document.getElementById('collegeFieldsGroup');
+    const campusLat = document.getElementById('campusLat');
+    const campusLng = document.getElementById('campusLng');
+    const radiusMiles = document.getElementById('radiusMiles');
+    const lookupCampusBtn = document.getElementById('lookupCampusBtn');
+    const lookupCampusStatus = document.getElementById('lookupCampusStatus');
+
+    // Bulk import
+    const searchCollegesBtn = document.getElementById('searchCollegesBtn');
+    const bulkDefaultRadius = document.getElementById('bulkDefaultRadius');
+    const bulkImportStatus = document.getElementById('bulkImportStatus');
+    const bulkImportList = document.getElementById('bulkImportList');
+    const bulkImportActions = document.getElementById('bulkImportActions');
+    const bulkImportSelectAllBtn = document.getElementById('bulkImportSelectAllBtn');
+    const bulkImportSelectNoneBtn = document.getElementById('bulkImportSelectNoneBtn');
+    const bulkImportAddBtn = document.getElementById('bulkImportAddBtn');
     const saveBtn = document.getElementById('saveBtn');
     const clearBtn = document.getElementById('clearBtn');
     const agencyList = document.getElementById('agencyList');
@@ -93,9 +138,27 @@
     const publishStatus = document.getElementById('publishStatus');
     const importFile = document.getElementById('importFile');
 
+    // Sign-in
+    const githubTokenInput = document.getElementById('githubTokenInput');
+    const signinBtn = document.getElementById('signinBtn');
+    const signinForm = document.getElementById('signinForm');
+    const signedInStatus = document.getElementById('signedInStatus');
+    const signoutBtn = document.getElementById('signoutBtn');
+
+    // Corrections
+    const refreshCorrectionsBtn = document.getElementById('refreshCorrectionsBtn');
+    const githubCorrectionsList = document.getElementById('githubCorrectionsList');
+    const localCorrectionsList = document.getElementById('localCorrectionsList');
+    const editCorrectionModal = document.getElementById('editCorrectionModal');
+    const editCorrectionValue = document.getElementById('editCorrectionValue');
+    const saveCorrectionEditBtn = document.getElementById('saveCorrectionEditBtn');
+    const cancelCorrectionEditBtn = document.getElementById('cancelCorrectionEditBtn');
+
     // Stats
     const cityCount = document.getElementById('cityCount');
     const countyCount = document.getElementById('countyCount');
+    const isdCount = document.getElementById('isdCount');
+    const collegeCount = document.getElementById('collegeCount');
     const stateCount = document.getElementById('stateCount');
     const totalCount = document.getElementById('totalCount');
 
@@ -546,13 +609,25 @@
             }
         };
 
-        db.agencies = seedData;
-        db.defaultAgency = {
-            agencyName: 'Texas Department of Public Safety',
-            phone: '(512) 463-2000',
-            address: '5805 N Lamar Blvd, Austin, TX 78752',
-            website: 'https://www.dps.texas.gov/'
-        };
+        // Merge, never replace: seed entries only fill in keys that don't
+        // already exist. This used to be `db.agencies = seedData`, which
+        // silently destroyed any agency added beyond the seed list (bulk-
+        // imported colleges, ISD entries, manual additions) every time this
+        // function ran on a browser/device where the stored seed version
+        // didn't match -- which happens after any deploy, or the first time
+        // admin.html loads on a new device. Existing entries always win.
+        db.agencies = { ...seedData, ...db.agencies };
+
+        // Same reasoning: don't clobber a default agency the admin already
+        // configured or corrected.
+        if (!db.defaultAgency) {
+            db.defaultAgency = {
+                agencyName: 'Texas Department of Public Safety',
+                phone: '(512) 463-2000',
+                address: '5805 N Lamar Blvd, Austin, TX 78752',
+                website: 'https://www.dps.texas.gov/'
+            };
+        }
 
         saveDB(db);
         localStorage.setItem(SEED_VERSION_KEY, CURRENT_SEED_VERSION.toString());
@@ -616,12 +691,13 @@
                 </div>`;
         } else {
             agencyList.innerHTML = filtered.map(([key, agency]) => {
-                const icon = agency.jurisdictionType === 'city' ? 'fa-city'
-                           : agency.jurisdictionType === 'county' ? 'fa-flag'
-                           : 'fa-star';
-                const typeLabel = agency.jurisdictionType === 'city' ? 'City Police'
-                                : agency.jurisdictionType === 'county' ? 'County Sheriff'
-                                : 'State Police';
+                const ICONS = { city: 'fa-city', county: 'fa-flag', isd: 'fa-graduation-cap', college: 'fa-graduation-cap' };
+                const LABELS = { city: 'City Police', county: 'County Sheriff', isd: 'ISD Police', college: 'Campus Police' };
+                const icon = ICONS[agency.jurisdictionType] || 'fa-star';
+                const typeLabel = LABELS[agency.jurisdictionType] || 'State Police';
+                const campusInfo = agency.jurisdictionType === 'college' && agency.campusLat && agency.campusLng
+                    ? ` &middot; ${agency.radiusMiles || '?'} mi radius of (${agency.campusLat}, ${agency.campusLng})`
+                    : '';
 
                 return `
                     <div class="agency-item">
@@ -629,7 +705,7 @@
                             <h3>${agency.agencyName}</h3>
                             <div class="jurisdiction-type">
                                 <i class="fas ${icon}"></i>
-                                ${typeLabel} &middot; ${agency.jurisdictionName}
+                                ${typeLabel} &middot; ${agency.jurisdictionName}${campusInfo}
                             </div>
                             <div class="agency-contact">
                                 ${agency.phone || 'No phone'} &middot;
@@ -651,9 +727,13 @@
         // Update stats
         const cities = entries.filter(([, v]) => v.jurisdictionType === 'city').length;
         const counties = entries.filter(([, v]) => v.jurisdictionType === 'county').length;
+        const isds = entries.filter(([, v]) => v.jurisdictionType === 'isd').length;
+        const colleges = entries.filter(([, v]) => v.jurisdictionType === 'college').length;
         const states = entries.filter(([, v]) => v.jurisdictionType === 'state').length;
         cityCount.textContent = cities;
         countyCount.textContent = counties;
+        isdCount.textContent = isds;
+        collegeCount.textContent = colleges;
         stateCount.textContent = states;
         totalCount.textContent = entries.length;
     }
@@ -671,10 +751,30 @@
 
     // ── Form Helpers ────────────────────────────────────────────────────────
 
+    function updateCollegeFieldsVisibility() {
+        const isCollege = jurisdictionType.value === 'college';
+        collegeFieldsGroup.classList.toggle('hidden', !isCollege);
+        campusLat.required = isCollege;
+        campusLng.required = isCollege;
+        radiusMiles.required = isCollege;
+
+        const HINTS = {
+            city: 'For city/county: use proper name. For state: leave as "Texas"',
+            county: 'For city/county: use proper name. For state: leave as "Texas"',
+            state: 'For city/county: use proper name. For state: leave as "Texas"',
+            isd: 'Use the district\'s proper name, e.g. "Austin ISD" or just "Austin" \u2014 be consistent, since this must match the Census boundary name.',
+            college: 'Use the college/university\'s common name, e.g. "University of Texas at Austin".'
+        };
+        jurisdictionNameHint.textContent = HINTS[jurisdictionType.value] || HINTS.city;
+    }
+
+    jurisdictionType.addEventListener('change', updateCollegeFieldsVisibility);
+
     function clearForm() {
         form.reset();
         editingKey = null;
         saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Agency';
+        updateCollegeFieldsVisibility();
     }
 
     function populateForm(key) {
@@ -690,15 +790,232 @@
         address.value = agency.address;
         website.value = agency.website;
         onlineReporting.value = agency.onlineReporting || '';
+        campusLat.value = agency.campusLat || '';
+        campusLng.value = agency.campusLng || '';
+        radiusMiles.value = agency.radiusMiles || '';
+        updateCollegeFieldsVisibility();
 
         saveBtn.innerHTML = '<i class="fas fa-save"></i> Update Agency';
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    // ── Campus Coordinate Lookup (single) ──────────────────────────────────
+    // Free, keyless geocoding via OpenStreetMap's Nominatim — good fit for
+    // an occasional, admin-triggered manual lookup like this one.
+
+    lookupCampusBtn.addEventListener('click', async () => {
+        const name = jurisdictionName.value.trim();
+        if (!name) {
+            lookupCampusStatus.textContent = 'Enter the Jurisdiction Name above first.';
+            lookupCampusStatus.className = 'correction-status error';
+            return;
+        }
+
+        lookupCampusBtn.disabled = true;
+        lookupCampusStatus.textContent = 'Looking up...';
+        lookupCampusStatus.className = 'text-muted';
+
+        try {
+            const query = `${name}, Texas, USA`;
+            const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
+            const resp = await fetch(url, { headers: { Accept: 'application/json' } });
+            if (!resp.ok) throw new Error(`Lookup failed (${resp.status})`);
+            const results = await resp.json();
+
+            if (!results.length) {
+                lookupCampusStatus.textContent = 'No results found. Try adjusting the name, or enter coordinates manually.';
+                lookupCampusStatus.className = 'correction-status error';
+                return;
+            }
+
+            campusLat.value = parseFloat(results[0].lat).toFixed(6);
+            campusLng.value = parseFloat(results[0].lon).toFixed(6);
+            lookupCampusStatus.textContent = `Found: ${results[0].display_name} — confirm this looks right.`;
+            lookupCampusStatus.className = 'correction-status success';
+        } catch (error) {
+            lookupCampusStatus.textContent = `Lookup failed: ${error.message}`;
+            lookupCampusStatus.className = 'correction-status error';
+        } finally {
+            lookupCampusBtn.disabled = false;
+        }
+    });
+
+    // ── Bulk Import Colleges ───────────────────────────────────────────────
+    // Live query against OpenStreetMap's Overpass API (free, keyless,
+    // public instance) for every university/college tagged in Texas.
+    // Crowd-sourced data, so it's a starting list to review, not an
+    // authoritative registry -- nothing is added until the admin picks
+    // which rows to import.
+
+    let bulkImportResults = [];
+
+    // overpass-api.de's main instance recently tightened its CORS policy and
+    // now rejects browser POST requests outright (406, no CORS headers on
+    // the response — which surfaces to fetch() as an opaque "Failed to
+    // fetch", not a readable status code). GET avoids the CORS preflight
+    // entirely since it's a "simple" cross-origin request, so we use that
+    // instead, with fallback across community-run mirrors in case any one
+    // instance is down, overloaded, or rate-limiting us.
+    const OVERPASS_ENDPOINTS = [
+        'https://overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter',
+        'https://overpass.private.coffee/api/interpreter'
+    ];
+
+    async function searchColleges() {
+        searchCollegesBtn.disabled = true;
+        bulkImportStatus.textContent = 'Searching OpenStreetMap (this can take up to a minute)...';
+        bulkImportStatus.className = 'text-muted';
+        bulkImportList.innerHTML = '';
+        bulkImportActions.classList.add('hidden');
+
+        const overpassQuery = `
+            [out:json][timeout:60];
+            area["ISO3166-2"="US-TX"]["admin_level"="4"]->.tx;
+            (
+              node["amenity"="university"](area.tx);
+              node["amenity"="college"](area.tx);
+              way["amenity"="university"](area.tx);
+              way["amenity"="college"](area.tx);
+            );
+            out center;
+        `;
+
+        let data = null;
+        let lastError = null;
+
+        for (const endpoint of OVERPASS_ENDPOINTS) {
+            try {
+                const url = `${endpoint}?data=${encodeURIComponent(overpassQuery)}`;
+                const resp = await fetch(url);
+                if (!resp.ok) {
+                    lastError = new Error(`${endpoint} returned ${resp.status}`);
+                    continue;
+                }
+                data = await resp.json();
+                break; // success — stop trying further mirrors
+            } catch (error) {
+                lastError = error;
+            }
+        }
+
+        if (!data) {
+            bulkImportStatus.textContent = `Search failed: ${lastError ? lastError.message : 'no response'}. All OpenStreetMap servers were unavailable — try again in a bit.`;
+            bulkImportStatus.className = 'correction-status error';
+            searchCollegesBtn.disabled = false;
+            return;
+        }
+
+        try {
+            const seen = new Set();
+            const db = loadDB();
+            bulkImportResults = [];
+
+            for (const el of data.elements || []) {
+                const name = el.tags && el.tags.name;
+                if (!name || seen.has(name)) continue;
+                const lat = el.lat ?? (el.center && el.center.lat);
+                const lng = el.lon ?? (el.center && el.center.lon);
+                if (!isFinite(lat) || !isFinite(lng)) continue;
+                seen.add(name);
+                bulkImportResults.push({
+                    name,
+                    lat: Number(lat).toFixed(6),
+                    lng: Number(lng).toFixed(6),
+                    alreadyAdded: !!db.agencies[`college:${name}`]
+                });
+            }
+
+            bulkImportResults.sort((a, b) => a.name.localeCompare(b.name));
+            renderBulkImportList();
+            bulkImportStatus.textContent = `Found ${bulkImportResults.length} candidates. Review and select which to import.`;
+            bulkImportStatus.className = 'correction-status success';
+            bulkImportActions.classList.toggle('hidden', bulkImportResults.length === 0);
+        } catch (error) {
+            bulkImportStatus.textContent = `Couldn't process results: ${error.message}`;
+            bulkImportStatus.className = 'correction-status error';
+        } finally {
+            searchCollegesBtn.disabled = false;
+        }
+    }
+
+    function renderBulkImportList() {
+        const defaultRadius = bulkDefaultRadius.value || '0.5';
+        bulkImportList.innerHTML = bulkImportResults.map((item, i) => `
+            <div class="bulk-import-item ${item.alreadyAdded ? 'already-added' : ''}" data-index="${i}">
+                <input type="checkbox" ${item.alreadyAdded ? 'disabled' : 'checked'}>
+                <div class="bulk-item-info">
+                    <div class="bulk-item-name">${escapeHtml(item.name)}${item.alreadyAdded ? ' (already added)' : ''}</div>
+                    <div class="bulk-item-coords">${item.lat}, ${item.lng}</div>
+                </div>
+                <input type="number" class="bulk-item-radius" step="any" min="0.1"
+                       value="${defaultRadius}" ${item.alreadyAdded ? 'disabled' : ''} title="Radius (miles)">
+            </div>
+        `).join('');
+    }
+
+    searchCollegesBtn.addEventListener('click', searchColleges);
+
+    bulkImportSelectAllBtn.addEventListener('click', () => {
+        bulkImportList.querySelectorAll('input[type="checkbox"]:not(:disabled)').forEach((cb) => { cb.checked = true; });
+    });
+
+    bulkImportSelectNoneBtn.addEventListener('click', () => {
+        bulkImportList.querySelectorAll('input[type="checkbox"]').forEach((cb) => { cb.checked = false; });
+    });
+
+    bulkImportAddBtn.addEventListener('click', () => {
+        const rows = bulkImportList.querySelectorAll('.bulk-import-item');
+        const db = loadDB();
+        let added = 0;
+
+        rows.forEach((row) => {
+            const idx = parseInt(row.dataset.index, 10);
+            const item = bulkImportResults[idx];
+            const checkbox = row.querySelector('input[type="checkbox"]');
+            if (!checkbox.checked || item.alreadyAdded) return;
+
+            const radiusInput = row.querySelector('.bulk-item-radius');
+            const key = `college:${item.name}`;
+            db.agencies[key] = {
+                jurisdictionType: 'college',
+                jurisdictionName: item.name,
+                agencyName: `${item.name} Police Department`,
+                phone: '',
+                address: '',
+                website: '',
+                onlineReporting: '',
+                campusLat: item.lat,
+                campusLng: item.lng,
+                radiusMiles: radiusInput.value || '0.5'
+            };
+            item.alreadyAdded = true;
+            added++;
+        });
+
+        if (added > 0) {
+            saveDB(db);
+            renderList(searchInput.value.toLowerCase().trim());
+            renderBulkImportList();
+            bulkImportStatus.textContent = `Added ${added} college${added === 1 ? '' : 's'}. Edit each one in the list above to fill in phone/website contact info.`;
+            bulkImportStatus.className = 'correction-status success';
+        } else {
+            bulkImportStatus.textContent = 'Nothing selected to add.';
+            bulkImportStatus.className = 'correction-status error';
+        }
+    });
+
     // ── Event Handlers ──────────────────────────────────────────────────────
 
     form.addEventListener('submit', (e) => {
         e.preventDefault();
+
+        if (jurisdictionType.value === 'college') {
+            if (!campusLat.value.trim() || !campusLng.value.trim() || !radiusMiles.value.trim()) {
+                alert('Campus latitude, longitude, and radius are required for College/University Police so the app can auto-detect nearby searches.');
+                return;
+            }
+        }
 
         const key = `${jurisdictionType.value}:${jurisdictionName.value.trim()}`;
         const data = {
@@ -710,6 +1027,12 @@
             website: website.value.trim(),
             onlineReporting: onlineReporting.value.trim()
         };
+
+        if (jurisdictionType.value === 'college') {
+            data.campusLat = campusLat.value.trim();
+            data.campusLng = campusLng.value.trim();
+            data.radiusMiles = radiusMiles.value.trim();
+        }
 
         const db = loadDB();
         db.agencies[key] = data;
@@ -755,19 +1078,20 @@
     }
 
     async function publishToGitHub() {
-        const token = prompt('Enter a GitHub token with Contents: Read and write access. It is used for this publish only and is not saved.');
-        if (!token) return;
+        const token = getAdminToken();
+        if (!token) {
+            publishStatus.textContent = 'Sign in with a GitHub token above first.';
+            publishStatus.className = 'publish-status error';
+            githubTokenInput.focus();
+            return;
+        }
 
         publishBtn.disabled = true;
         publishStatus.textContent = 'Publishing shared agency data...';
         publishStatus.className = 'publish-status';
 
         const apiUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_DATA_PATH}`;
-        const headers = {
-            Accept: 'application/vnd.github+json',
-            Authorization: `Bearer ${token}`,
-            'X-GitHub-Api-Version': '2022-11-28'
-        };
+        const headers = githubHeaders();
 
         try {
             const db = loadDB();
@@ -797,6 +1121,13 @@
 
             if (!response.ok) {
                 const details = await response.json().catch(() => ({}));
+                if (response.status === 403 || response.status === 404) {
+                    throw new Error(
+                        `GitHub rejected the token (${details.message || response.status}). ` +
+                        `Check that it has "Contents: Read and write" access to ${GITHUB_OWNER}/${GITHUB_REPO} ` +
+                        `(fine-grained tokens) or the "repo"/"public_repo" scope (classic tokens).`
+                    );
+                }
                 throw new Error(details.message || `GitHub publish failed (${response.status})`);
             }
 
@@ -811,6 +1142,35 @@
     }
 
     publishBtn.addEventListener('click', publishToGitHub);
+
+    // ── GitHub Sign-in ──────────────────────────────────────────────────────
+
+    function updateSigninUI() {
+        const signedIn = !!getAdminToken();
+        signinForm.classList.toggle('hidden', signedIn);
+        signedInStatus.classList.toggle('hidden', !signedIn);
+    }
+
+    signinBtn.addEventListener('click', () => {
+        const token = githubTokenInput.value.trim();
+        if (!token) return;
+        setAdminToken(token);
+        githubTokenInput.value = '';
+        updateSigninUI();
+        loadGithubCorrections();
+    });
+
+    githubTokenInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); signinBtn.click(); }
+    });
+
+    signoutBtn.addEventListener('click', () => {
+        clearAdminToken();
+        updateSigninUI();
+        githubCorrectionsList.innerHTML = '<p class="text-muted">Sign in with a GitHub token above to load these.</p>';
+    });
+
+    updateSigninUI();
 
     // Import
     importBtn.addEventListener('click', () => {
@@ -926,9 +1286,325 @@
         });
     });
 
+    // ── Correction Submissions ─────────────────────────────────────────────
+    //
+    // Public visitors suggest corrections from index.html. A submission
+    // becomes a real GitHub Issue (label "correction") when it's made from
+    // a browser with an active admin session (see GITHUB_TOKEN_SESSION_KEY);
+    // otherwise it's saved to this browser's localStorage only, and shows
+    // up below under "Local Submissions" if this admin page happens to be
+    // opened on that same device. This mirrors the CaseLaw-LE pattern:
+    // no backend, no external service, GitHub Issues + localStorage only.
+    //
+    // Issue body format (also produced by app.js on the public site):
+    //   **Agency:** <agency name>
+    //   **Jurisdiction Key:** <type>:<name>
+    //   **Field:** <phone|address|website|onlineReporting|agencyName>
+    //   **Current Value:** <...>
+    //   **Suggested Value:** <...>
+    //   **Note:** <optional free text>
+    //   **Submitted By:** <optional name/contact>
+
+    const FIELD_LABELS = {
+        phone: 'Phone',
+        address: 'Address',
+        website: 'Website',
+        onlineReporting: 'Online Reporting URL',
+        agencyName: 'Agency Name'
+    };
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str == null ? '' : String(str);
+        return div.innerHTML;
+    }
+
+    function parseCorrectionBody(body) {
+        const fields = {};
+        const re = /\*\*(.+?):\*\*[ \t]*(.*)/g;
+        let m;
+        while ((m = re.exec(body || '')) !== null) {
+            fields[m[1].trim()] = m[2].trim();
+        }
+        return {
+            agencyName: fields['Agency'] || '',
+            jurisdictionKey: fields['Jurisdiction Key'] || '',
+            field: fields['Field'] || '',
+            currentValue: fields['Current Value'] || '',
+            suggestedValue: fields['Suggested Value'] || '',
+            note: fields['Note'] || '',
+            submittedBy: fields['Submitted By'] || ''
+        };
+    }
+
+    function loadLocalCorrections() {
+        try {
+            const raw = localStorage.getItem(LOCAL_CORRECTIONS_KEY);
+            return raw ? JSON.parse(raw) : [];
+        } catch {
+            return [];
+        }
+    }
+
+    function saveLocalCorrections(list) {
+        localStorage.setItem(LOCAL_CORRECTIONS_KEY, JSON.stringify(list));
+    }
+
+    // In-session overrides for edited-but-not-yet-approved GitHub submissions
+    // (GitHub issues themselves aren't rewritten until Approve/Discard acts
+    // on them, so an in-progress edit just lives here until then).
+    const githubEditOverrides = {};
+
+    function correctionCardHtml(item, source) {
+        const override = source === 'github' ? githubEditOverrides[item.number] : null;
+        const suggestedValue = override !== undefined && override !== null ? override : item.suggestedValue;
+        const fieldLabel = FIELD_LABELS[item.field] || item.field || 'Field';
+        return `
+            <div class="correction-item" data-source="${source}" data-id="${source === 'github' ? item.number : item.id}">
+                <div class="correction-meta">
+                    <span class="correction-agency">${escapeHtml(item.agencyName || 'Unknown agency')}</span>
+                    <span class="correction-field-badge">${escapeHtml(fieldLabel)}</span>
+                </div>
+                <div class="correction-values">
+                    <div>Current: <span class="old-value">${escapeHtml(item.currentValue) || '(none)'}</span></div>
+                    <div>Suggested: <span class="new-value">${escapeHtml(suggestedValue) || '(none)'}</span></div>
+                </div>
+                ${item.note ? `<p class="correction-note">"${escapeHtml(item.note)}"</p>` : ''}
+                <p class="correction-submitted-by">
+                    ${item.submittedBy ? `Submitted by: ${escapeHtml(item.submittedBy)}` : 'Submitted anonymously'}
+                    ${item.timestamp ? ` &middot; ${new Date(item.timestamp).toLocaleString()}` : ''}
+                </p>
+                <div class="correction-actions">
+                    <button class="btn btn-success btn-approve-correction">
+                        <i class="fas fa-check"></i> Approve
+                    </button>
+                    <button class="btn btn-secondary btn-edit-correction">
+                        <i class="fas fa-pen"></i> Edit
+                    </button>
+                    <button class="btn btn-danger btn-discard-correction">
+                        <i class="fas fa-trash"></i> Discard
+                    </button>
+                    ${source === 'local' ? `
+                    <button class="btn btn-primary btn-send-correction">
+                        <i class="fas fa-cloud-arrow-up"></i> Send to GitHub
+                    </button>` : ''}
+                </div>
+            </div>`;
+    }
+
+    function renderLocalCorrections() {
+        const items = loadLocalCorrections();
+        localCorrectionsList.innerHTML = items.length
+            ? items.map((item) => correctionCardHtml(item, 'local')).join('')
+            : '<p class="text-muted">None yet.</p>';
+    }
+
+    let githubCorrectionIssues = [];
+
+    async function loadGithubCorrections() {
+        if (!getAdminToken()) {
+            githubCorrectionsList.innerHTML = '<p class="text-muted">Sign in with a GitHub token above to load these.</p>';
+            return;
+        }
+        githubCorrectionsList.innerHTML = '<p class="text-muted">Loading...</p>';
+        try {
+            const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues?state=open&labels=${encodeURIComponent(CORRECTIONS_LABEL)}&per_page=100`;
+            const response = await fetch(url, { headers: githubHeaders() });
+            if (!response.ok) throw new Error(`GitHub read failed (${response.status})`);
+            const issues = await response.json();
+            githubCorrectionIssues = issues.map((issue) => ({
+                number: issue.number,
+                ...parseCorrectionBody(issue.body)
+            }));
+            githubCorrectionsList.innerHTML = githubCorrectionIssues.length
+                ? githubCorrectionIssues.map((item) => correctionCardHtml(item, 'github')).join('')
+                : '<p class="text-muted">None pending.</p>';
+        } catch (error) {
+            githubCorrectionsList.innerHTML = `<p class="text-muted">Couldn't load: ${escapeHtml(error.message)}</p>`;
+        }
+    }
+
+    async function closeGithubIssue(number, comment) {
+        const headers = githubHeaders({ 'Content-Type': 'application/json' });
+        try {
+            await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues/${number}/comments`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ body: comment })
+            });
+        } catch { /* best-effort */ }
+        await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues/${number}`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify({ state: 'closed' })
+        });
+    }
+
+    async function sendLocalCorrectionToGithub(item) {
+        const token = getAdminToken();
+        if (!token) {
+            alert('Sign in with a GitHub token first.');
+            return;
+        }
+        const body = [
+            `**Agency:** ${item.agencyName || ''}`,
+            `**Jurisdiction Key:** ${item.jurisdictionKey || ''}`,
+            `**Field:** ${item.field || ''}`,
+            `**Current Value:** ${item.currentValue || ''}`,
+            `**Suggested Value:** ${item.suggestedValue || ''}`,
+            `**Note:** ${item.note || ''}`,
+            `**Submitted By:** ${item.submittedBy || ''}`
+        ].join('\n');
+
+        const response = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues`, {
+            method: 'POST',
+            headers: githubHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({
+                title: `Correction: ${item.agencyName || 'Unknown'} — ${FIELD_LABELS[item.field] || item.field}`,
+                body,
+                labels: [CORRECTIONS_LABEL]
+            })
+        });
+        if (!response.ok) {
+            const details = await response.json().catch(() => ({}));
+            throw new Error(details.message || `GitHub issue creation failed (${response.status})`);
+        }
+
+        const remaining = loadLocalCorrections().filter((i) => i.id !== item.id);
+        saveLocalCorrections(remaining);
+        renderLocalCorrections();
+        loadGithubCorrections();
+    }
+
+    function applyCorrectionToAgency(item) {
+        if (!item.field) {
+            alert('This submission is missing structured data and must be applied manually.');
+            return false;
+        }
+
+        if (item.jurisdictionKey === 'default') {
+            const current = loadDefault() || {};
+            current[item.field === 'agencyName' ? 'agencyName' : item.field] = item.suggestedValue;
+            saveDefault(current);
+            const db = loadDB();
+            db.defaultAgency = current;
+            saveDB(db);
+            renderDefault();
+            return true;
+        }
+
+        if (!item.jurisdictionKey) {
+            alert('This submission is missing structured data and must be applied manually.');
+            return false;
+        }
+
+        const db = loadDB();
+        const agency = db.agencies[item.jurisdictionKey];
+        if (!agency) {
+            alert(`No agency found for key "${item.jurisdictionKey}". It may have been renamed or removed — apply this manually if still relevant.`);
+            return false;
+        }
+        agency[item.field] = item.suggestedValue;
+        saveDB(db);
+        renderList(searchInput.value.trim());
+        return true;
+    }
+
+    let currentEditTarget = null; // { item, source }
+
+    function openEditCorrectionModal(item, source) {
+        currentEditTarget = { item, source };
+        const override = source === 'github' ? githubEditOverrides[item.number] : null;
+        editCorrectionValue.value = (override !== undefined && override !== null) ? override : item.suggestedValue;
+        editCorrectionModal.classList.remove('hidden');
+        editCorrectionValue.focus();
+    }
+
+    saveCorrectionEditBtn.addEventListener('click', () => {
+        if (!currentEditTarget) return;
+        const { item, source } = currentEditTarget;
+        const newValue = editCorrectionValue.value;
+        if (source === 'github') {
+            githubEditOverrides[item.number] = newValue;
+            githubCorrectionsList.innerHTML = githubCorrectionIssues.map((i) => correctionCardHtml(i, 'github')).join('');
+        } else {
+            const items = loadLocalCorrections().map((i) => i.id === item.id ? { ...i, suggestedValue: newValue } : i);
+            saveLocalCorrections(items);
+            renderLocalCorrections();
+        }
+        editCorrectionModal.classList.add('hidden');
+        currentEditTarget = null;
+    });
+
+    cancelCorrectionEditBtn.addEventListener('click', () => {
+        editCorrectionModal.classList.add('hidden');
+        currentEditTarget = null;
+    });
+
+    function handleCorrectionListClick(e, source, list) {
+        const card = e.target.closest('.correction-item');
+        if (!card) return;
+        const id = card.dataset.id;
+        const item = source === 'github'
+            ? list.find((i) => String(i.number) === id)
+            : list.find((i) => String(i.id) === id);
+        if (!item) return;
+
+        if (e.target.closest('.btn-edit-correction')) {
+            openEditCorrectionModal(item, source);
+            return;
+        }
+
+        if (e.target.closest('.btn-approve-correction')) {
+            const finalValue = source === 'github' && githubEditOverrides[item.number] != null
+                ? githubEditOverrides[item.number]
+                : item.suggestedValue;
+            const applied = applyCorrectionToAgency({ ...item, suggestedValue: finalValue });
+            if (source === 'github') {
+                closeGithubIssue(item.number, applied
+                    ? 'Approved and applied to agency-data.json. Remember to click "Publish to GitHub" to make it live.'
+                    : 'Reviewed, but could not auto-apply (agency not found). Please check manually.'
+                ).then(() => loadGithubCorrections());
+            } else {
+                saveLocalCorrections(loadLocalCorrections().filter((i) => i.id !== item.id));
+                renderLocalCorrections();
+            }
+            if (applied) {
+                alert('Correction applied. Click "Publish to GitHub" in the Current Agencies section to make it live.');
+            }
+            return;
+        }
+
+        if (e.target.closest('.btn-discard-correction')) {
+            if (!confirm('Discard this submission without applying it?')) return;
+            if (source === 'github') {
+                closeGithubIssue(item.number, 'Discarded — no change made.').then(() => loadGithubCorrections());
+            } else {
+                saveLocalCorrections(loadLocalCorrections().filter((i) => i.id !== item.id));
+                renderLocalCorrections();
+            }
+            return;
+        }
+
+        if (e.target.closest('.btn-send-correction')) {
+            sendLocalCorrectionToGithub(item).catch((err) => alert(err.message));
+        }
+    }
+
+    githubCorrectionsList.addEventListener('click', (e) => handleCorrectionListClick(e, 'github', githubCorrectionIssues));
+    localCorrectionsList.addEventListener('click', (e) => handleCorrectionListClick(e, 'local', loadLocalCorrections()));
+
+    refreshCorrectionsBtn.addEventListener('click', () => {
+        renderLocalCorrections();
+        loadGithubCorrections();
+    });
+
     // ── Init ────────────────────────────────────────────────────────────────
     seedIfEmpty();
     renderList();
     renderDefault();
+    renderLocalCorrections();
+    loadGithubCorrections();
+    updateCollegeFieldsVisibility();
 
 })();

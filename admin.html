@@ -47,6 +47,26 @@
 
     <main class="container admin-container" id="adminContent" style="display:none;">
 
+        <!-- GitHub Sign-in -->
+        <section class="form-section signin-section">
+            <h2><i class="fab fa-github"></i> GitHub Sign-in</h2>
+            <p class="description">
+                Sign in with a GitHub token to publish changes and review correction submissions.
+                The token is kept only in this browser tab's session (never saved to the repo or
+                to long-term storage) and is cleared when you close the tab.
+            </p>
+            <div id="signinForm" class="signin-form">
+                <input type="password" id="githubTokenInput" placeholder="github_pat_..." autocomplete="off">
+                <button id="signinBtn" class="btn btn-primary">
+                    <i class="fas fa-right-to-bracket"></i> Sign in
+                </button>
+            </div>
+            <div id="signedInStatus" class="signedin-status hidden">
+                <span><i class="fas fa-circle-check"></i> Signed in for this session</span>
+                <button id="signoutBtn" class="btn-link">Sign out</button>
+            </div>
+        </section>
+
         <!-- Add/Edit Form -->
         <section class="form-section">
             <h2><i class="fas fa-plus-circle"></i> Add/Edit Agency</h2>
@@ -60,6 +80,8 @@
                             <option value="">Select type</option>
                             <option value="city">City Police Department</option>
                             <option value="county">County Sheriff's Office</option>
+                            <option value="isd">ISD Police Department</option>
+                            <option value="college">College/University Police</option>
                             <option value="state">State Police</option>
                         </select>
                     </div>
@@ -69,7 +91,7 @@
                             <i class="fas fa-map-marker-alt"></i> Jurisdiction Name
                         </label>
                         <input type="text" id="jurisdictionName" required placeholder="e.g., Austin, Travis, Texas">
-                        <small>For city/county: use proper name. For state: leave as "Texas"</small>
+                        <small id="jurisdictionNameHint">For city/county: use proper name. For state: leave as "Texas"</small>
                     </div>
 
                     <div class="form-group full-width">
@@ -77,6 +99,33 @@
                             <i class="fas fa-building-shield"></i> Agency Name
                         </label>
                         <input type="text" id="agencyName" required placeholder="e.g., Austin Police Department">
+                    </div>
+
+                    <div id="collegeFieldsGroup" class="form-group full-width hidden">
+                        <label><i class="fas fa-location-crosshairs"></i> Campus Location (for automatic detection)</label>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="campusLat">Campus Latitude</label>
+                                <input type="number" id="campusLat" step="any" placeholder="30.2849">
+                            </div>
+                            <div class="form-group">
+                                <label for="campusLng">Campus Longitude</label>
+                                <input type="number" id="campusLng" step="any" placeholder="-97.7341">
+                            </div>
+                            <div class="form-group">
+                                <label for="radiusMiles">Radius (miles)</label>
+                                <input type="number" id="radiusMiles" step="any" min="0.1" placeholder="1.0">
+                            </div>
+                        </div>
+                        <button type="button" id="lookupCampusBtn" class="btn btn-secondary">
+                            <i class="fas fa-magnifying-glass-location"></i> Look Up Coordinates
+                        </button>
+                        <p id="lookupCampusStatus" class="text-muted"></p>
+                        <small>
+                            Looks up the Jurisdiction Name above via OpenStreetMap. Confirm the result looks right
+                            (search is name-based and can occasionally match the wrong place) — or right-click the
+                            campus on Google Maps to enter coordinates yourself.
+                        </small>
                     </div>
 
                     <div class="form-group">
@@ -130,6 +179,61 @@
             </form>
         </section>
 
+        <!-- Bulk Import Colleges -->
+        <section class="list-section bulk-import-section">
+            <div class="section-header">
+                <h2><i class="fas fa-graduation-cap"></i> Bulk Import Colleges</h2>
+                <button id="searchCollegesBtn" class="btn btn-primary">
+                    <i class="fas fa-magnifying-glass"></i> Search OpenStreetMap for TX Colleges
+                </button>
+            </div>
+            <p class="description">
+                Queries OpenStreetMap (free, no account needed) for every place in Texas tagged as a university
+                or college, so you don't have to look each one up individually. This is crowd-sourced map data,
+                not an official registry — review the list before importing, and expect to fill in phone/website
+                afterward via the normal edit flow, since OpenStreetMap doesn't have police-department contact info.
+            </p>
+            <div class="form-group" style="max-width: 200px;">
+                <label for="bulkDefaultRadius">Default radius (miles)</label>
+                <input type="number" id="bulkDefaultRadius" step="any" min="0.1" value="0.5">
+            </div>
+            <p id="bulkImportStatus" class="text-muted"></p>
+            <div id="bulkImportList" class="bulk-import-list"></div>
+            <div id="bulkImportActions" class="bulk-import-actions hidden">
+                <button id="bulkImportSelectAllBtn" class="btn btn-secondary">Select All</button>
+                <button id="bulkImportSelectNoneBtn" class="btn btn-secondary">Select None</button>
+                <button id="bulkImportAddBtn" class="btn btn-success">
+                    <i class="fas fa-download"></i> Add Selected
+                </button>
+            </div>
+        </section>
+
+        <!-- Correction Submissions -->
+        <section class="list-section corrections-section">
+            <div class="section-header">
+                <h2><i class="fas fa-flag"></i> Correction Submissions</h2>
+                <button id="refreshCorrectionsBtn" class="btn btn-secondary">
+                    <i class="fas fa-rotate"></i> Refresh
+                </button>
+            </div>
+            <p class="description">
+                Suggestions submitted from the public site. GitHub submissions were created directly
+                (submitted from a browser with an active admin session); local submissions were saved
+                on a visitor's own device and only appear here if they happen to open this admin page
+                on that same device — send them to GitHub to make them permanently visible here.
+            </p>
+
+            <h3 class="corrections-subheading"><i class="fab fa-github"></i> GitHub Submissions</h3>
+            <div id="githubCorrectionsList" class="corrections-list">
+                <p class="text-muted">Sign in with a GitHub token above to load these.</p>
+            </div>
+
+            <h3 class="corrections-subheading"><i class="fas fa-desktop"></i> Local Submissions (this device only)</h3>
+            <div id="localCorrectionsList" class="corrections-list">
+                <p class="text-muted">None yet.</p>
+            </div>
+        </section>
+
         <!-- Agency List -->
         <section class="list-section">
             <div class="section-header">
@@ -167,6 +271,16 @@
                     <i class="fas fa-flag"></i>
                     <span id="countyCount">0</span>
                     <small>Counties</small>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-graduation-cap"></i>
+                    <span id="isdCount">0</span>
+                    <small>ISDs</small>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-graduation-cap"></i>
+                    <span id="collegeCount">0</span>
+                    <small>Colleges</small>
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-star"></i>
@@ -246,6 +360,29 @@
                     <i class="fas fa-check"></i> Confirm Import
                 </button>
                 <button id="cancelImportBtn" class="btn btn-secondary">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editCorrectionModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-pen"></i> Edit Suggested Value</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="editCorrectionValue">Value to apply</label>
+                    <input type="text" id="editCorrectionValue">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="saveCorrectionEditBtn" class="btn btn-primary">
+                    <i class="fas fa-check"></i> Save
+                </button>
+                <button id="cancelCorrectionEditBtn" class="btn btn-secondary">
                     Cancel
                 </button>
             </div>
