@@ -1440,23 +1440,25 @@
     async function closeGithubIssue(number, comment) {
         const headers = githubHeaders({ 'Content-Type': 'application/json' });
         // The audit comment is best-effort: fetch() doesn't throw on HTTP 4xx/5xx,
-        // and some tokens can close an issue but not post a comment, so a 403 here
-        // must not block the close. Closing is the authoritative step; if IT fails
-        // we throw an actionable error.
-        try {
-            if (comment) {
+        // and comments are subject to aggressive GitHub secondary rate limits (a
+        // 403 "You have exceeded a secondary rate limit" is common after a burst),
+        // so a 403 here must not block the close. Closing is the authoritative
+        // step; if IT fails we throw an actionable error. The exact GitHub message
+        // is logged so throttling vs. a permissions change is unambiguous.
+        if (comment) {
+            try {
                 const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues/${number}/comments`, {
                     method: 'POST',
                     headers,
                     body: JSON.stringify({ body: comment })
                 });
-                if (!res.ok && res.status !== 401) {
-                    // Non-blocking, but log it so it isn't a silent mystery.
-                    console.warn(`Comment on issue #${number} failed (${res.status}) — closing anyway.`);
+                if (!res.ok) {
+                    const details = await res.json().catch(() => ({}));
+                    console.warn(`Comment on issue #${number} failed (${res.status}): ${details.message || res.status} — closing anyway.`);
                 }
+            } catch (e) {
+                console.warn(`Comment on issue #${number} failed — closing anyway.`, e);
             }
-        } catch (e) {
-            console.warn(`Comment on issue #${number} failed — closing anyway.`, e);
         }
 
         const closeRes = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues/${number}`, {
