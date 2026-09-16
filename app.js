@@ -1,4 +1,4 @@
-// Texas Law Enforcement Jurisdiction Locator — Main Application
+// Texas Law Enforcement Jurisdiction Finder — Main Application
 
 (function () {
     'use strict';

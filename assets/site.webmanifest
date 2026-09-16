@@ -1,6 +1,6 @@
 {
-  "name": "Texas Law Enforcement Jurisdiction Locator",
-  "short_name": "TXLE Locator",
+  "name": "Texas Law Enforcement Jurisdiction Finder",
+  "short_name": "TXLE Finder",
   "description": "Find your local law enforcement agency based on your GPS location in Texas",
   "start_url": "../index.html",
   "scope": "../",
@@ -22,7 +22,9 @@
       "purpose": "any"
     }
   ],
-  "categories": ["utilities"],
+  "categories": [
+    "utilities"
+  ],
   "lang": "en",
   "dir": "ltr"
 }
