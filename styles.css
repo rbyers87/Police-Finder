@@ -172,6 +172,17 @@ body,
     box-sizing: border-box;
 }
 
+/*
+    The root element needs its own themed background too. iOS Safari paints
+    the band behind/above the browser chrome (the "navbar" region — toolbar +
+    status bar) with the root/overscroll background, so leaving <html>
+    transparent shows white there until you scroll and the chrome collapses.
+    Using the same --bg-body variable keeps light and dark in sync.
+*/
+html {
+    background: var(--bg-body);
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     line-height: 1.6;

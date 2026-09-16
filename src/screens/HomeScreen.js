@@ -127,7 +127,7 @@ export default function HomeScreen() {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            © 2026 Texas Law Enforcement Lookup
+            © 2026 Texas Police Jurisdiction Finder
           </Text>
           <Text style={styles.footerSubtext}>
             Information provided for reference only. Always verify contact information before making important reports.

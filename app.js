@@ -1,4 +1,4 @@
-// Texas Law Enforcement Jurisdiction Finder — Main Application
+// Texas Police Jurisdiction Finder — Main Application
 
 (function () {
     'use strict';
@@ -9,10 +9,23 @@
     const themeToggleBtn = document.getElementById('themeToggle');
     const themeIcon = document.getElementById('themeIcon');
 
+    // theme-color tints the iOS Safari "navbar" (toolbar + status bar region).
+    // Keep it in sync with the theme so dark mode gives a black band instead of
+    // a white one that only hides once you scroll and the chrome collapses.
+    const THEME_COLOR_LIGHT = '#004080';
+    const THEME_COLOR_DARK = '#1a1a2e';
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+
+    function applyThemeColor(theme) {
+        if (!themeColorMeta) return;
+        themeColorMeta.content = theme === 'dark' ? THEME_COLOR_DARK : THEME_COLOR_LIGHT;
+    }
+
     function setTheme(theme) {
         root.setAttribute('data-theme', theme);
         localStorage.setItem(THEME_KEY, theme);
         updateThemeIcon(theme);
+        applyThemeColor(theme);
     }
 
     function updateThemeIcon(theme) {
@@ -29,9 +42,11 @@
         if (saved) {
             root.setAttribute('data-theme', saved);
             updateThemeIcon(saved);
+            applyThemeColor(saved);
         } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
             root.setAttribute('data-theme', 'dark');
             updateThemeIcon('dark');
+            applyThemeColor('dark');
         }
     })();
 
@@ -48,6 +63,7 @@
             if (!localStorage.getItem(THEME_KEY)) {
                 root.setAttribute('data-theme', e.matches ? 'dark' : 'light');
                 updateThemeIcon(e.matches ? 'dark' : 'light');
+                applyThemeColor(e.matches ? 'dark' : 'light');
             }
         });
     }
