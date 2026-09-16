@@ -1401,6 +1401,17 @@
 
     let githubCorrectionIssues = [];
 
+    // An issue is a correction submission if it carries the "correction"
+    // label OR matches the submission title/body format. The label is NOT
+    // reliable on its own: GitHub silently drops labels from issues created
+    // on a public repo by a token without label/triage permission, so an
+    // unlabeled submission would otherwise never surface in this list.
+    function isCorrectionIssue(issue) {
+        if (issue.labels && issue.labels.some((l) => (l.name || l) === CORRECTIONS_LABEL)) return true;
+        if (/\bCorrection:/i.test(issue.title || '')) return true;
+        return /^\*\*Agency:\*\*/m.test(issue.body || '');
+    }
+
     async function loadGithubCorrections() {
         if (!getAdminToken()) {
             githubCorrectionsList.innerHTML = '<p class="text-muted">Sign in with a GitHub token above to load these.</p>';
@@ -1408,14 +1419,16 @@
         }
         githubCorrectionsList.innerHTML = '<p class="text-muted">Loading...</p>';
         try {
-            const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues?state=open&labels=${encodeURIComponent(CORRECTIONS_LABEL)}&per_page=100`;
+            const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues?state=open&per_page=100`;
             const response = await fetch(url, { headers: githubHeaders() });
             if (!response.ok) throw new Error(`GitHub read failed (${response.status})`);
             const issues = await response.json();
-            githubCorrectionIssues = issues.map((issue) => ({
-                number: issue.number,
-                ...parseCorrectionBody(issue.body)
-            }));
+            githubCorrectionIssues = issues
+                .filter((issue) => !issue.pull_request && isCorrectionIssue(issue))
+                .map((issue) => ({
+                    number: issue.number,
+                    ...parseCorrectionBody(issue.body)
+                }));
             githubCorrectionsList.innerHTML = githubCorrectionIssues.length
                 ? githubCorrectionIssues.map((item) => correctionCardHtml(item, 'github')).join('')
                 : '<p class="text-muted">None pending.</p>';
