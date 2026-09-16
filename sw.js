@@ -2,7 +2,7 @@
 
 // Bump this on every deploy that touches sw.js's own caching logic.
 // (Changing CACHE_NAME forces old caches to be purged on activate.)
-const CACHE_NAME = 'tp-Finder-v15';
+const CACHE_NAME = 'tp-Finder-v16';
 
 // Paths are relative to this service worker's own URL (the repo/app root),
 // so they work on GitHub Pages subpath hosting (e.g. /Police-Finder/).

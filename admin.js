@@ -6,7 +6,7 @@
     const DB_KEY = 'txle_agencies';
     const DEFAULT_KEY = 'txle_default_agency';
     const SEED_VERSION_KEY = 'txle_seed_version';
-    const CURRENT_SEED_VERSION = 2; // Bump this to force re-seed
+    const CURRENT_SEED_VERSION = 3; // Bump this to force a re-seed from the published agency-data.json
     const GITHUB_OWNER = 'rbyers87';
     const GITHUB_REPO = 'Police-Finder';
     const GITHUB_BRANCH = 'main';
@@ -181,7 +181,7 @@
 
     // ── Pre-populate seed data ─────────────────────────────────────────────
 
-    function seedIfEmpty() {
+    async function seedIfEmpty() {
         const db = loadDB();
         const storedVersion = parseInt(localStorage.getItem(SEED_VERSION_KEY) || '0', 10);
 
@@ -609,24 +609,45 @@
             }
         };
 
-        // Merge, never replace: seed entries only fill in keys that don't
-        // already exist. This used to be `db.agencies = seedData`, which
-        // silently destroyed any agency added beyond the seed list (bulk-
-        // imported colleges, ISD entries, manual additions) every time this
-        // function ran on a browser/device where the stored seed version
-        // didn't match -- which happens after any deploy, or the first time
-        // admin.html loads on a new device. Existing entries always win.
-        db.agencies = { ...seedData, ...db.agencies };
+        // Authoritative base on a reseed: the currently published
+        // agency-data.json (the single source of truth the public app reads).
+        // This stops a stale localStorage copy — seeded long ago from this
+        // file's hardcoded snapshot — from being re-published over newer
+        // data and making corrections appear to "revert".
+        let published = null;
+        try {
+            const resp = await fetch('./agency-data.json', { cache: 'no-store' });
+            if (resp.ok) {
+                published = await resp.json();
+            } else {
+                console.warn(`agency-data.json fetch returned ${resp.status} — using fallback seed.`);
+            }
+        } catch (e) {
+            console.warn('agency-data.json fetch failed — using fallback seed.', e);
+        }
 
-        // Same reasoning: don't clobber a default agency the admin already
-        // configured or corrected.
-        if (!db.defaultAgency) {
-            db.defaultAgency = {
-                agencyName: 'Texas Department of Public Safety',
-                phone: '(512) 463-2000',
-                address: '5805 N Lamar Blvd, Austin, TX 78752',
-                website: 'https://www.dps.texas.gov/'
-            };
+        const publishedAgencies = published && published.agencies && typeof published.agencies === 'object'
+            ? published.agencies
+            : null;
+
+        if (publishedAgencies) {
+            // Published data wins over whatever stale copy is in localStorage,
+            // so this device stops reverting corrections. Local-only additions
+            // beyond the published set are still preserved.
+            db.agencies = { ...db.agencies, ...publishedAgencies };
+            if (published.defaultAgency) db.defaultAgency = published.defaultAgency;
+        } else {
+            // Fallback: the baked-in reference database. Existing entries win
+            // so this never destroys local work.
+            db.agencies = { ...seedData, ...db.agencies };
+            if (!db.defaultAgency) {
+                db.defaultAgency = {
+                    agencyName: 'Texas Department of Public Safety',
+                    phone: '(512) 463-2000',
+                    address: '5805 N Lamar Blvd, Austin, TX 78752',
+                    website: 'https://www.dps.texas.gov/'
+                };
+            }
         }
 
         saveDB(db);
@@ -1648,10 +1669,11 @@
     });
 
     // ── Init ────────────────────────────────────────────────────────────────
-    seedIfEmpty();
-    renderList();
-    renderDefault();
-    renderLocalCorrections();
+    seedIfEmpty().then(() => {
+        renderList();
+        renderDefault();
+        renderLocalCorrections();
+    });
     loadGithubCorrections();
     updateCollegeFieldsVisibility();
 
