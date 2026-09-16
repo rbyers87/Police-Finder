@@ -609,13 +609,25 @@
             }
         };
 
-        db.agencies = seedData;
-        db.defaultAgency = {
-            agencyName: 'Texas Department of Public Safety',
-            phone: '(512) 463-2000',
-            address: '5805 N Lamar Blvd, Austin, TX 78752',
-            website: 'https://www.dps.texas.gov/'
-        };
+        // Merge, never replace: seed entries only fill in keys that don't
+        // already exist. This used to be `db.agencies = seedData`, which
+        // silently destroyed any agency added beyond the seed list (bulk-
+        // imported colleges, ISD entries, manual additions) every time this
+        // function ran on a browser/device where the stored seed version
+        // didn't match -- which happens after any deploy, or the first time
+        // admin.html loads on a new device. Existing entries always win.
+        db.agencies = { ...seedData, ...db.agencies };
+
+        // Same reasoning: don't clobber a default agency the admin already
+        // configured or corrected.
+        if (!db.defaultAgency) {
+            db.defaultAgency = {
+                agencyName: 'Texas Department of Public Safety',
+                phone: '(512) 463-2000',
+                address: '5805 N Lamar Blvd, Austin, TX 78752',
+                website: 'https://www.dps.texas.gov/'
+            };
+        }
 
         saveDB(db);
         localStorage.setItem(SEED_VERSION_KEY, CURRENT_SEED_VERSION.toString());
