@@ -1439,18 +1439,41 @@
 
     async function closeGithubIssue(number, comment) {
         const headers = githubHeaders({ 'Content-Type': 'application/json' });
+        // The audit comment is best-effort: fetch() doesn't throw on HTTP 4xx/5xx,
+        // and some tokens can close an issue but not post a comment, so a 403 here
+        // must not block the close. Closing is the authoritative step; if IT fails
+        // we throw an actionable error.
         try {
-            await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues/${number}/comments`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ body: comment })
-            });
-        } catch { /* best-effort */ }
-        await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues/${number}`, {
+            if (comment) {
+                const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues/${number}/comments`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ body: comment })
+                });
+                if (!res.ok && res.status !== 401) {
+                    // Non-blocking, but log it so it isn't a silent mystery.
+                    console.warn(`Comment on issue #${number} failed (${res.status}) — closing anyway.`);
+                }
+            }
+        } catch (e) {
+            console.warn(`Comment on issue #${number} failed — closing anyway.`, e);
+        }
+
+        const closeRes = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues/${number}`, {
             method: 'PATCH',
             headers,
             body: JSON.stringify({ state: 'closed' })
         });
+        if (!closeRes.ok) {
+            const details = await closeRes.json().catch(() => ({}));
+            let message = details.message || `GitHub close failed (${closeRes.status})`;
+            if (closeRes.status === 403 || closeRes.status === 404) {
+                message = `${message}. Your token needs "Issues: Read and write" access to ` +
+                    `${GITHUB_OWNER}/${GITHUB_REPO} (fine-grained tokens) or the ` +
+                    `"repo"/"public_repo" scope (classic tokens) to close issues.`;
+            }
+            throw new Error(message);
+        }
     }
 
     async function sendLocalCorrectionToGithub(item) {
@@ -1577,7 +1600,12 @@
                 closeGithubIssue(item.number, applied
                     ? 'Approved and applied to agency-data.json. Remember to click "Publish to GitHub" to make it live.'
                     : 'Reviewed, but could not auto-apply (agency not found). Please check manually.'
-                ).then(() => loadGithubCorrections());
+                )
+                    .then(() => loadGithubCorrections())
+                    .catch((err) => {
+                        alert(`Could not close issue #${item.number}: ${err.message}`);
+                        loadGithubCorrections();
+                    });
             } else {
                 saveLocalCorrections(loadLocalCorrections().filter((i) => i.id !== item.id));
                 renderLocalCorrections();
@@ -1591,7 +1619,12 @@
         if (e.target.closest('.btn-discard-correction')) {
             if (!confirm('Discard this submission without applying it?')) return;
             if (source === 'github') {
-                closeGithubIssue(item.number, 'Discarded — no change made.').then(() => loadGithubCorrections());
+                closeGithubIssue(item.number, 'Discarded — no change made.')
+                    .then(() => loadGithubCorrections())
+                    .catch((err) => {
+                        alert(`Could not close issue #${item.number}: ${err.message}`);
+                        loadGithubCorrections();
+                    });
             } else {
                 saveLocalCorrections(loadLocalCorrections().filter((i) => i.id !== item.id));
                 renderLocalCorrections();
