@@ -711,11 +711,19 @@
         // Detect if website is a real URL vs a search suggestion
         const isRealUrl = website && (website.startsWith('http://') || website.startsWith('https://'));
 
-        const iconByType = {
+        const iconSrcByType = {
+            city: 'assets/icon-city-police.png',
+            county: 'assets/icon-sheriff.png',
+            state: 'assets/icon-state-patrol.png'
+        };
+        const faIconByType = {
             isd: 'fa-graduation-cap',
             college: 'fa-graduation-cap'
         };
-        const icon = iconByType[agency.jurisdictionType] || (isPrimary ? 'fa-shield-halved' : 'fa-building-shield');
+        const iconSrc = iconSrcByType[agency.jurisdictionType];
+        const iconHtml = iconSrc
+            ? `<img src="${iconSrc}" alt="${escapeAttr(agency.type || '')}">`
+            : `<i class="fas ${faIconByType[agency.jurisdictionType] || 'fa-building-shield'}"></i>`;
         const badgeClass = isPrimary ? 'badge-primary' : (agency.jurisdictionType === 'isd' || agency.jurisdictionType === 'college' ? 'badge-default' : 'badge-secondary');
         const badge = `<span class="badge ${badgeClass}">${label}</span>`;
 
@@ -762,8 +770,8 @@
         return `
             <div class="jurisdiction-card">
                 <div class="jurisdiction-header">
-                    <div class="jurisdiction-icon">
-                        <i class="fas ${icon}"></i>
+                    <div class="jurisdiction-icon${iconSrc ? ' has-image' : ''}">
+                        ${iconHtml}
                     </div>
                     <div class="jurisdiction-info">
                         <h3>${agency.name}</h3>
@@ -794,8 +802,8 @@
         return `
             <div class="jurisdiction-card">
                 <div class="jurisdiction-header">
-                    <div class="jurisdiction-icon default-icon">
-                        <i class="fas fa-star"></i>
+                    <div class="jurisdiction-icon default-icon has-image">
+                        <img src="assets/icon-state-patrol.png" alt="State Police">
                     </div>
                     <div class="jurisdiction-info">
                         <h3>${contact.agencyName || 'Texas Department of Public Safety'}</h3>
