@@ -1,4 +1,171 @@
-/* Reset and Base Styles */
+/* ── Theme Variables ────────────────────────────────────────────────────── */
+:root {
+    /* Text */
+    --color-text: #333;
+    --color-text-muted: #6c757d;
+    --color-text-secondary: #666;
+    --color-text-light: #888;
+    --color-text-heading: #004080;
+    --color-text-label: #333;
+
+    /* Backgrounds */
+    --bg-body: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    --bg-card: white;
+    --bg-input: #f0f2f5;
+    --bg-input-inset: transparent;
+    --bg-contact-item: #f8f9fa;
+    --bg-no-contact: #f8f9fa;
+    --bg-location-display: linear-gradient(135deg, #e8f4fd 0%, #d6eaff 100%);
+    --bg-jurisdiction-context: #e8f4fd;
+    --bg-error: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    --bg-footer: #343a40;
+    --bg-modal: white;
+    --bg-modal-overlay: rgba(0, 0, 0, 0.5);
+    --bg-toggle: rgba(255, 255, 255, 0.9);
+
+    /* Borders */
+    --border-card: 1px solid rgba(255, 255, 255, 0.2);
+    --border-card-hover: #004080;
+    --border-input: 2px solid #dde1e6;
+    --border-input-focus: #004080;
+    --border-jurisdiction-card: 2px solid #e9ecef;
+    --border-no-contact: 1px dashed #dee2e6;
+    --border-form: 2px solid #e9ecef;
+    --border-form-focus: #004080;
+    --border-modal-header: 1px solid #e9ecef;
+    --border-modal-footer: 1px solid #e9ecef;
+    --border-jurisdiction-context: 1px solid #b3d7f2;
+
+    /* Shadows */
+    --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.1);
+    --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.1);
+    --shadow-hero-card: 0 8px 32px rgba(0, 0, 0, 0.25);
+    --shadow-jurisdiction-card: 0 4px 12px rgba(0, 0, 0, 0.05);
+    --shadow-toggle: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+    /* SVG / Map */
+    --map-outline-fill: #004080;
+    --map-outline-stroke: #ffffff;
+
+    /* Misc */
+    --footer-text: #adb5bd;
+    --modal-close-hover-bg: #f8f9fa;
+    --modal-close-hover-color: #333;
+}
+
+/* ── Dark Theme Overrides ───────────────────────────────────────────────── */
+[data-theme="dark"] {
+    --color-text: #e4e6e8;
+    --color-text-muted: #9ca3af;
+    --color-text-secondary: #9ca3af;
+    --color-text-light: #777d86;
+    --color-text-heading: #6db3f2;
+    --color-text-label: #d1d5db;
+
+    --bg-body: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    --bg-card: #1e293b;
+    --bg-input: #334155;
+    --bg-input-inset: transparent;
+    --bg-contact-item: #283548;
+    --bg-no-contact: #283548;
+    --bg-location-display: linear-gradient(135deg, #1e3a5f 0%, #1a2f4a 100%);
+    --bg-jurisdiction-context: #1e3a5f;
+    --bg-error: linear-gradient(135deg, #4a1a1a 0%, #3f1f1f 100%);
+    --bg-footer: #111827;
+    --bg-modal: #1e293b;
+    --bg-modal-overlay: rgba(0, 0, 0, 0.7);
+    --bg-toggle: rgba(30, 41, 59, 0.9);
+
+    --border-card: 1px solid rgba(255, 255, 255, 0.08);
+    --border-card-hover: #6db3f2;
+    --border-input: 2px solid #475569;
+    --border-input-focus: #6db3f2;
+    --border-jurisdiction-card: 2px solid #334155;
+    --border-no-contact: 1px dashed #475569;
+    --border-form: 2px solid #475569;
+    --border-form-focus: #6db3f2;
+    --border-modal-header: 1px solid #334155;
+    --border-modal-footer: 1px solid #334155;
+    --border-jurisdiction-context: 1px solid #2a4a6b;
+
+    --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-hero-card: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --shadow-jurisdiction-card: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --shadow-toggle: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+    --map-outline-fill: #2563eb;
+    --map-outline-stroke: #1e293b;
+
+    --footer-text: #6b7280;
+    --modal-close-hover-bg: #334155;
+    --modal-close-hover-color: #e4e6e8;
+
+    /* Override inline styles that used hardcoded colors */
+    --color-contact-icon: #6db3f2;
+    --btn-primary-gradient: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    --btn-primary-gradient-hover: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+}
+
+/* ── Theme Transition ───────────────────────────────────────────────────── */
+body,
+.hero-card,
+.jurisdiction-card,
+.modal-content,
+.contact-item,
+.emergency-banner,
+.map-section,
+.location-display,
+.jurisdiction-section,
+.no-contact,
+.error-display {
+    transition: background 0.35s ease, color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+}
+
+/* ── Theme Toggle Button ────────────────────────────────────────────────── */
+.theme-toggle {
+    position: fixed;
+    top: 1.25rem;
+    right: 1.25rem;
+    z-index: 900;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: none;
+    background: var(--bg-toggle);
+    color: #f59e0b;
+    font-size: 1.25rem;
+    cursor: pointer;
+    box-shadow: var(--shadow-toggle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.35s ease, color 0.35s ease;
+}
+
+.theme-toggle:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.theme-toggle:active {
+    transform: scale(0.95);
+}
+
+[data-theme="dark"] .theme-toggle {
+    color: #facc15;
+}
+
+/* ── Icon Swap Animation ────────────────────────────────────────────────── */
+#themeIcon {
+    transition: transform 0.4s ease;
+}
+
+.theme-toggle:hover #themeIcon {
+    transform: rotate(20deg);
+}
+
+/* ── Reset and Base Styles ──────────────────────────────────────────────── */
 * {
     margin: 0;
     padding: 0;
@@ -8,8 +175,8 @@
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     line-height: 1.6;
-    color: #333;
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    color: var(--color-text);
+    background: var(--bg-body);
     min-height: 100vh;
 }
 
@@ -40,7 +207,11 @@ body {
     padding: 2.5rem;
     max-width: 480px;
     width: 100%;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    box-shadow: var(--shadow-hero-card);
+}
+
+[data-theme="dark"] .hero-card {
+    background: rgba(30, 41, 59, 0.97);
 }
 
 .hero-card-dots {
@@ -62,7 +233,7 @@ body {
 .hero h1 {
     font-size: 2.5rem;
     font-weight: 800;
-    color: #1a1a2e;
+    color: var(--color-text);
     line-height: 1.15;
     margin-bottom: 0.75rem;
 }
@@ -71,7 +242,7 @@ body {
     font-size: 0.95rem;
     font-weight: 600;
     letter-spacing: 1.5px;
-    color: #555;
+    color: var(--color-text-secondary);
     margin-bottom: 2rem;
 }
 
@@ -86,15 +257,15 @@ body {
     flex: 1;
     display: flex;
     align-items: center;
-    background: #f0f2f5;
-    border: 2px solid #dde1e6;
+    background: var(--bg-input);
+    border: var(--border-input);
     border-radius: 50px;
     padding: 0 0.75rem;
     transition: border-color 0.2s;
 }
 
 .hero-search-input-wrap:focus-within {
-    border-color: #004080;
+    border-color: var(--border-input-focus);
 }
 
 .hero-search-icon {
@@ -106,11 +277,11 @@ body {
 .hero-search-input-wrap input {
     flex: 1;
     border: none;
-    background: transparent;
+    background: var(--bg-input-inset);
     padding: 0.85rem 0;
     font-size: 0.95rem;
     outline: none;
-    color: #333;
+    color: var(--color-text);
 }
 
 .hero-search-input-wrap input::placeholder {
@@ -176,12 +347,12 @@ body {
 
 /* Sections */
 .location-section, .jurisdiction-section {
-    background: white;
+    background: var(--bg-card);
     border-radius: 16px;
     padding: 2rem;
     margin: 2rem 0;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: var(--shadow-card);
+    border: var(--border-card);
 }
 
 .section-header {
@@ -194,7 +365,7 @@ body {
 }
 
 .section-header h2 {
-    color: #004080;
+    color: var(--color-text-heading);
     font-size: 1.5rem;
     display: flex;
     align-items: center;
@@ -262,9 +433,11 @@ body {
 .search-input {
     flex: 1;
     padding: 0.75rem 1rem;
-    border: 2px solid #e9ecef;
+    border: var(--border-form);
     border-radius: 8px;
     font-size: 1rem;
+    background: var(--bg-input);
+    color: var(--color-text);
     transition: all 0.3s ease;
 }
 
@@ -276,7 +449,7 @@ body {
 
 /* Location Display */
 .location-display {
-    background: linear-gradient(135deg, #e8f4fd 0%, #d6eaff 100%);
+    background: var(--bg-location-display);
     border: 1px solid #004080;
     border-radius: 12px;
     padding: 1.5rem;
@@ -284,36 +457,36 @@ body {
 }
 
 .location-info h3 {
-    color: #004080;
+    color: var(--color-text-heading);
     font-size: 1.3rem;
     margin-bottom: 0.5rem;
 }
 
 .location-info p {
-    color: #666;
+    color: var(--color-text-secondary);
     margin-bottom: 0.5rem;
 }
 
 .coordinates {
     font-size: 0.9rem;
-    color: #888;
+    color: var(--color-text-light);
     font-family: 'Courier New', monospace;
 }
 
 /* Jurisdiction Results */
 .jurisdiction-card {
-    background: white;
-    border: 2px solid #e9ecef;
+    background: var(--bg-card);
+    border: var(--border-jurisdiction-card);
     border-radius: 12px;
     padding: 1.5rem;
     margin: 1rem 0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--shadow-jurisdiction-card);
     transition: all 0.3s ease;
 }
 
 .jurisdiction-card:hover {
-    border-color: #004080;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    border-color: var(--border-card-hover);
+    box-shadow: var(--shadow-card-hover);
     transform: translateY(-2px);
 }
 
@@ -337,13 +510,13 @@ body {
 }
 
 .jurisdiction-info h3 {
-    color: #004080;
+    color: var(--color-text-heading);
     font-size: 1.4rem;
     margin-bottom: 0.25rem;
 }
 
 .jurisdiction-type {
-    color: #666;
+    color: var(--color-text-secondary);
     font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -360,7 +533,7 @@ body {
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem;
-    background: #f8f9fa;
+    background: var(--bg-contact-item);
     border-radius: 8px;
 }
 
@@ -381,18 +554,18 @@ body {
 .loading {
     text-align: center;
     padding: 2rem;
-    color: #666;
+    color: var(--color-text-secondary);
 }
 
 .loading i {
     font-size: 2rem;
     margin-bottom: 1rem;
-    color: #004080;
+    color: var(--color-text-heading);
 }
 
 /* Error Display */
 .error-display {
-    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    background: var(--bg-error);
     border: 1px solid #f5c6cb;
     color: #721c24;
     padding: 1.5rem;
@@ -403,6 +576,11 @@ body {
     gap: 1rem;
 }
 
+[data-theme="dark"] .error-display {
+    border: 1px solid #722f37;
+    color: #f0c6c9;
+}
+
 .error-display i {
     font-size: 1.5rem;
     color: #dc3545;
@@ -410,8 +588,8 @@ body {
 
 /* Footer */
 .app-footer {
-    background: #343a40;
-    color: #adb5bd;
+    background: var(--bg-footer);
+    color: var(--footer-text);
     text-align: center;
     padding: 2rem 0;
     margin-top: 3rem;
@@ -543,14 +721,14 @@ body {
 
 .badge-default {
     background: #ffc107;
-    color: #333;
+    color: var(--color-text);
 }
 
 /* ── Jurisdiction Context Bar ───────────────────────────────────────────── */
 
 .jurisdiction-context {
-    background: #e8f4fd;
-    border: 1px solid #b3d7f2;
+    background: var(--bg-jurisdiction-context);
+    border: var(--border-jurisdiction-context);
     border-radius: 8px;
     padding: 0.75rem 1rem;
     margin-bottom: 1rem;
@@ -558,11 +736,11 @@ body {
     align-items: center;
     gap: 0.5rem;
     font-size: 0.95rem;
-    color: #004080;
+    color: var(--color-text-heading);
 }
 
 .jurisdiction-context i {
-    color: #004080;
+    color: var(--color-text-heading);
 }
 
 /* ── Action Buttons ─────────────────────────────────────────────────────── */
@@ -605,19 +783,19 @@ body {
 .no-contact {
     text-align: center;
     padding: 1.5rem;
-    background: #f8f9fa;
+    background: var(--bg-no-contact);
     border-radius: 8px;
-    border: 1px dashed #dee2e6;
+    border: var(--border-no-contact);
 }
 
 .no-contact i {
     font-size: 2rem;
-    color: #adb5bd;
+    color: var(--footer-text);
     margin-bottom: 0.75rem;
 }
 
 .no-contact p {
-    color: #666;
+    color: var(--color-text-secondary);
     margin-bottom: 1rem;
 }
 
@@ -626,12 +804,12 @@ body {
 .no-results {
     text-align: center;
     padding: 2rem;
-    color: #666;
+    color: var(--color-text-secondary);
 }
 
 .no-results i {
     font-size: 3rem;
-    color: #adb5bd;
+    color: var(--footer-text);
     margin-bottom: 1rem;
 }
 
@@ -645,7 +823,7 @@ body {
 /* ── Footer Link ────────────────────────────────────────────────────────── */
 
 .footer-link {
-    color: #adb5bd;
+    color: var(--footer-text);
     text-decoration: none;
     transition: color 0.3s ease;
 }
@@ -661,7 +839,7 @@ body {
 /* ── Text Utilities ─────────────────────────────────────────────────────── */
 
 .text-muted {
-    color: #6c757d;
+    color: var(--color-text-muted);
     font-size: 0.9rem;
     margin-top: 0.25rem;
 }
@@ -669,16 +847,16 @@ body {
 /* ── Texas Map Beacon ───────────────────────────────────────────────────── */
 
 .map-section {
-    background: white;
+    background: var(--bg-card);
     border-radius: 16px;
     padding: 2rem;
     margin: 2rem 0;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: var(--shadow-card);
+    border: var(--border-card);
 }
 
 .map-section h2 {
-    color: #004080;
+    color: var(--color-text-heading);
     font-size: 1.5rem;
     display: flex;
     align-items: center;
@@ -704,8 +882,12 @@ body {
 }
 
 /* State outline */
+.tx-bg-rect {
+    fill: #e8d5b5;          /* warm cream background (light mode) */
+}
+
 .tx-outline {
-    fill: #004080;          /* solid blue interior */
+    fill: #c8a96e;          /* warm tan interior (light mode) */
     stroke: #ffffff;        /* white outline KEPT */
     stroke-width: 2.4;
     stroke-linejoin: round;
@@ -716,11 +898,11 @@ body {
 }
 
 .tx-network-dot {
-    fill: #bfeaff;
+    fill: #7a5a2e;          /* warm brown dots (light mode) */
 }
 
 .tx-network-glow {
-    fill: url(#tx-node-glow);
+    fill: url(#tx-node-glow-light);  /* warm tan glow (light mode) */
 }
 
 /* All five map icons (City Police, Sheriff, State Patrol, ISD Police,
@@ -764,7 +946,7 @@ body {
 /* ── Search Hint (for fallback contact info) ────────────────────────────── */
 
 .search-hint {
-    color: #6c757d;
+    color: var(--color-text-muted);
     font-style: italic;
     font-size: 0.9rem;
 }
@@ -777,7 +959,7 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--bg-modal-overlay);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -790,7 +972,7 @@ body {
 }
 
 .modal-content {
-    background: white;
+    background: var(--bg-modal);
     border-radius: 16px;
     max-width: 520px;
     width: 100%;
@@ -804,11 +986,11 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 1.5rem;
-    border-bottom: 1px solid #e9ecef;
+    border-bottom: var(--border-modal-header);
 }
 
 .modal-header h3 {
-    color: #004080;
+    color: var(--color-text-heading);
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -818,7 +1000,7 @@ body {
     background: none;
     border: none;
     font-size: 1.5rem;
-    color: #6c757d;
+    color: var(--color-text-muted);
     cursor: pointer;
     width: 32px;
     height: 32px;
@@ -829,8 +1011,8 @@ body {
 }
 
 .modal-close:hover {
-    background: #f8f9fa;
-    color: #333;
+    background: var(--modal-close-hover-bg);
+    color: var(--modal-close-hover-color);
 }
 
 .modal-body {
@@ -842,7 +1024,7 @@ body {
     justify-content: flex-end;
     gap: 0.5rem;
     padding: 1.5rem;
-    border-top: 1px solid #e9ecef;
+    border-top: var(--border-modal-footer);
 }
 
 .form-group {
@@ -853,7 +1035,7 @@ body {
     display: block;
     font-weight: 600;
     margin-bottom: 0.5rem;
-    color: #333;
+    color: var(--color-text-label);
     font-size: 0.9rem;
 }
 
@@ -862,10 +1044,12 @@ body {
 .form-group textarea {
     width: 100%;
     padding: 0.75rem 1rem;
-    border: 2px solid #e9ecef;
+    border: var(--border-form);
     border-radius: 8px;
     font-size: 1rem;
     font-family: inherit;
+    background: var(--bg-input);
+    color: var(--color-text);
     transition: all 0.3s ease;
 }
 
@@ -873,7 +1057,7 @@ body {
 .form-group select:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: #004080;
+    border-color: var(--border-form-focus);
     box-shadow: 0 0 0 3px rgba(0, 64, 128, 0.1);
 }
 
@@ -884,7 +1068,7 @@ body {
 .btn-link {
     background: none;
     border: none;
-    color: #004080;
+    color: var(--color-text-heading);
     text-decoration: underline;
     cursor: pointer;
     font-size: 0.85rem;
@@ -896,12 +1080,12 @@ body {
 }
 
 .btn-link:hover {
-    color: #003366;
+    color: var(--border-card-hover);
 }
 
 .correction-context {
     margin-bottom: 1rem;
-    color: #495057;
+    color: var(--color-text-secondary);
 }
 
 .correction-status {
@@ -916,4 +1100,81 @@ body {
 
 .correction-status.error {
     color: #dc3545;
+}
+
+/* ── Remaining Dark Theme Overrides ──────────────────────────────────────── */
+[data-theme="dark"] .hero-location-btn {
+    color: #6db3f2;
+}
+[data-theme="dark"] .hero-location-btn:hover {
+    color: #9ccbf7;
+}
+[data-theme="dark"] .hero-search-btn {
+    background: #1d4ed8;
+}
+[data-theme="dark"] .hero-search-btn:hover {
+    background: #1e40af;
+}
+[data-theme="dark"] .hero-search-input-wrap:focus-within {
+    border-color: #6db3f2;
+}
+[data-theme="dark"] .hero-search-icon {
+    color: #6b7280;
+}
+[data-theme="dark"] .hero-search-input-wrap input::placeholder {
+    color: #6b7280;
+}
+[data-theme="dark"] .location-display {
+    border-color: #2563eb;
+}
+[data-theme="dark"] .contact-item i {
+    color: #6db3f2;
+}
+[data-theme="dark"] .jurisdiction-icon {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+[data-theme="dark"] .jurisdiction-icon.default-icon {
+    background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+    color: #1a1a2e;
+}
+[data-theme="dark"] .search-input:focus {
+    border-color: #6db3f2;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+[data-theme="dark"] .form-group input:focus,
+[data-theme="dark"] .form-group select:focus,
+[data-theme="dark"] .form-group textarea:focus {
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+[data-theme="dark"] .btn-primary {
+    background: var(--btn-primary-gradient);
+}
+[data-theme="dark"] .btn-primary:hover {
+    background: var(--btn-primary-gradient-hover);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+[data-theme="dark"] .tx-outline {
+    fill: var(--map-outline-fill);
+    stroke: var(--map-outline-stroke);
+}
+[data-theme="dark"] .tx-bg-rect {
+    fill: url(#tx-bg-gradient);  /* restore dark navy gradient in dark mode */
+}
+[data-theme="dark"] .tx-network-glow {
+    fill: url(#tx-node-glow);
+}
+[data-theme="dark"] .tx-network-dot {
+    fill: #3b82f6;
+}
+[data-theme="dark"] .emergency-banner {
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.2);
+}
+[data-theme="dark"] .modal-header h3,
+[data-theme="dark"] .jurisdiction-section h2,
+[data-theme="dark"] .map-section h2 {
+    color: var(--color-text-heading);
+}
+[data-theme="dark"] .badge-default {
+    background: #ca8a04;
+    color: #1a1a2e;
 }
