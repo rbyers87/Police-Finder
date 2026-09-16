@@ -552,6 +552,18 @@ body {
     line-height: 1.4;
 }
 
+/* Phone, address, and website in the contact list are tappable — give
+   them a link color + underline that reads well in light and dark mode. */
+.contact-item a {
+    color: var(--color-text-heading);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.contact-item a:hover {
+    text-decoration: underline;
+}
+
 .contact-actions {
     display: flex;
     gap: 1rem;

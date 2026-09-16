@@ -686,6 +686,9 @@
         // Detect if website is a real URL vs a search suggestion
         const isRealUrl = website && (website.startsWith('http://') || website.startsWith('https://'));
 
+        // Maps link: opens the address in the device's default maps app.
+        const mapsHref = address ? `geo:0,0?q=${encodeURIComponent(address)}` : null;
+
         const iconSrcByType = {
             city: 'assets/icon-city-police.png',
             county: 'assets/icon-sheriff.png',
@@ -712,20 +715,20 @@
                     <div class="contact-item">
                         <i class="fas fa-phone"></i>
                         ${isRealPhone
-                        ? `<span>${phone}</span>`
-                        : `<span class="search-hint">${phone}</span>`}
+                        ? `<a href="tel:${phoneDigits}" aria-label="Call ${escapeAttr(phone)}">${escapeAttr(phone)}</a>`
+                        : `<span class="search-hint">${escapeAttr(phone)}</span>`}
                     </div>` : ''}
                     ${address ? `
                     <div class="contact-item">
                         <i class="fas fa-location-dot"></i>
-                        <span>${address}</span>
+                        <a href="${escapeAttr(mapsHref)}" aria-label="Open in maps: ${escapeAttr(address)}">${escapeAttr(address)}</a>
                     </div>` : ''}
                     ${website ? `
                     <div class="contact-item">
                         <i class="fas fa-globe"></i>
                         ${isRealUrl
-                        ? `<a href="${website}" target="_blank" rel="noopener">${website}</a>`
-                        : `<span class="search-hint">${website}</span>`}
+                        ? `<a href="${escapeAttr(website)}" target="_blank" rel="noopener">${escapeAttr(website)}</a>`
+                        : `<span class="search-hint">${escapeAttr(website)}</span>`}
                     </div>` : ''}
                 </div>
                 <div class="contact-actions">
@@ -789,17 +792,17 @@
                     ${contact.phone ? `
                     <div class="contact-item">
                         <i class="fas fa-phone"></i>
-                        <span>${contact.phone}</span>
+                        <a href="tel:${contact.phone.replace(/[^0-9+]/g, '')}" aria-label="Call ${escapeAttr(contact.phone)}">${escapeAttr(contact.phone)}</a>
                     </div>` : ''}
                     ${contact.address ? `
                     <div class="contact-item">
                         <i class="fas fa-location-dot"></i>
-                        <span>${contact.address}</span>
+                        <a href="geo:0,0?q=${encodeURIComponent(contact.address)}" aria-label="Open in maps: ${escapeAttr(contact.address)}">${escapeAttr(contact.address)}</a>
                     </div>` : ''}
                     ${contact.website ? `
                     <div class="contact-item">
                         <i class="fas fa-globe"></i>
-                        <a href="${contact.website}" target="_blank" rel="noopener">${contact.website}</a>
+                        <a href="${escapeAttr(contact.website)}" target="_blank" rel="noopener">${escapeAttr(contact.website)}</a>
                     </div>` : ''}
                 </div>
                 <div class="contact-actions">
