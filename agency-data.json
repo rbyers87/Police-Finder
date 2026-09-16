@@ -6,7 +6,7 @@
       "agencyName": "Jefferson County Sheriff's Office",
       "phone": "(409) 835-8411",
       "address": "1001 Pearl St, Beaumont, TX 77701",
-      "website": "https://www.sheriff.jeffersoncountytx.gov/",
+      "website": "https://www.co.jefferson.tx.us/sheriff",
       "onlineReporting": ""
     },
     "county:Harris": {
@@ -555,7 +555,7 @@
       "agencyName": "Beaumont Police Department",
       "phone": "(409) 832-1234",
       "address": "255 College St, Beaumont, TX 77701",
-      "website": "https://www.beaumonttexas.gov/departments/police",
+      "website": "https://police.beaumonttexas.gov/",
       "onlineReporting": ""
     },
     "city:Galveston": {
