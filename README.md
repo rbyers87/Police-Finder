@@ -1,6 +1,6 @@
-# Texas Police Jurisdiction Finder (TPJ-Finder)
+# Texas Police Finder (TP-Finder)
 
-A progressive web app (PWA) that tells you which Texas law enforcement agency serves your location. Enter an address or use your GPS position, and TPJ-Finder resolves the governing jurisdiction (city police → county sheriff → Texas DPS) and shows the real non-emergency contact information for that agency.
+A progressive web app (PWA) that tells you which Texas law enforcement agency serves your location. Enter an address or use your GPS position, and TP-Finder resolves the governing jurisdiction (city police → county sheriff → Texas DPS) and shows the real non-emergency contact information for that agency.
 
 Designed for **non-emergency** use only. For emergencies, dial **9-1-1**.
 
@@ -58,7 +58,8 @@ After a lookup, a stylized inline-SVG map of Texas displays a pulsing beacon at 
 - Light/dark toggle button (persisted in `localStorage`)
 - Follows the OS `prefers-color-scheme` when no saved preference exists
 - CSS custom properties drive both themes; a pre-paint script prevents a theme flash
-- The iOS "navbar" (Safari toolbar/status-bar tint) is kept in sync via the `theme-color` meta tag, and the root background is themed so dark mode has no white overscroll band
+- The iOS "navbar" (Safari toolbar/status-bar tint) is kept in sync via the `theme-color` meta tag
+- When installed as an iOS PWA, `viewport-fit=cover` plus `env(safe-area-inset-*)` padding keeps content in the safe areas and fills the status-bar / home-indicator edges with the themed background — no white bands at the very top or bottom, even in dark mode
 
 ### Suggest a Correction
 

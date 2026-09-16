@@ -1,11 +1,11 @@
 {
-  "name": "Texas Police Jurisdiction Finder",
-  "short_name": "TPJ-Finder",
+  "name": "Texas Police Finder",
+  "short_name": "TP-Finder",
   "description": "Find your local law enforcement agency based on your GPS location in Texas",
   "start_url": "../index.html",
   "scope": "../",
   "display": "standalone",
-  "background_color": "#f5f7fa",
+  "background_color": "#1a1a2e",
   "theme_color": "#004080",
   "orientation": "portrait-primary",
   "icons": [

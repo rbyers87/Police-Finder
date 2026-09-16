@@ -1,4 +1,4 @@
-// Texas Police Jurisdiction Finder — Main Application
+// Texas Police Finder — Main Application
 
 (function () {
     'use strict';

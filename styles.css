@@ -125,7 +125,7 @@ body,
 /* ── Theme Toggle Button ────────────────────────────────────────────────── */
 .theme-toggle {
     position: fixed;
-    top: 1.25rem;
+    top: max(1.25rem, calc(env(safe-area-inset-top) + 1.25rem));
     right: 1.25rem;
     z-index: 900;
     width: 48px;
@@ -189,6 +189,13 @@ body {
     color: var(--color-text);
     background: var(--bg-body);
     min-height: 100vh;
+    /* When installed as an iOS PWA, viewport-fit=cover expands the page to the
+       full screen; keep content inside the safe areas (below the status bar and
+       above the home indicator). The themed html/body background fills those
+       edges, so dark mode has no white bands at the very top or very bottom.
+       env() resolves to 0 in regular browsers, making this a no-op there. */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
 }
 
 .container {
