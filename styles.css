@@ -521,17 +521,35 @@ body {
 
 .contact-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.75rem;
     padding: 0.75rem;
     background: var(--bg-contact-item);
     border-radius: 8px;
+    /* Grid/flex items default to min-width:auto, which stops a long
+       address or URL from shrinking and lets it spill out of the card
+       on narrow screens. Allow it to shrink instead. */
+    min-width: 0;
 }
 
 .contact-item i {
     color: #004080;
     width: 20px;
     text-align: center;
+    flex-shrink: 0;
+    line-height: 1.4;
+    margin-top: 0.15rem;
+}
+
+/* Let address/website text wrap inside the contact row instead of
+   overflowing the card (URLs and long addresses are often unwrappable
+   at their default white-space). */
+.contact-item span,
+.contact-item a {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.4;
 }
 
 .contact-actions {
