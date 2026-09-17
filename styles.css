@@ -207,12 +207,18 @@ body {
 .hero-card-dots span:nth-child(2) { background: #ffbd2e; }
 .hero-card-dots span:nth-child(3) { background: #27c93f; }
 
-.hero h1 {
+.hero h1,
+.hero-title {
     font-size: 2.5rem;
     font-weight: 800;
     color: var(--color-text);
     line-height: 1.15;
     margin-bottom: 0.75rem;
+}
+
+.hero-title,
+.hero-subtitle {
+    white-space: nowrap;
 }
 
 .hero-subtitle {
@@ -691,6 +697,11 @@ body {
 
     .hero h1 {
         font-size: 1.6rem;
+    }
+
+    .hero-title,
+    .hero-subtitle {
+        white-space: normal;
     }
 
     .hero-card {
